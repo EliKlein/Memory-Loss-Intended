@@ -3,14 +3,29 @@
 
 var GameStateHandler = { };
 
-function CameraEnemy(xSpawn, ySpawn){
-    this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
-    this.sprite.anchor.setTo(0.5,0.5);
-    this.face = function(direction){
-        this.sprite.angle = (direction%45)-(45/2);
-        this.sprite.frame = ((-Math.floor(direction/45))%8)+8;
+class CameraEnemy{
+    constructor(xSpawn, ySpawn){
+        this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
+        this.sprite.anchor.setTo(0.5,0.35);
+        this.face = function(direction){//this math is off... the angle is right I think, but the frame is wrong afaik
+            direction = direction%360;
+            direction += 45/2;
+            this.sprite.angle = (direction%45)-(45/2);
+            this.sprite.frame = ((-Math.floor(direction/45))%8)+8;
+        }
+        this.pointTo = function(x,y){
+            var d;
+            if(this.sprite.x == x){
+                d = 0
+            }else{
+                d = Math.atan((this.sprite.y-y)/(this.sprite.x-x));
+            }
+            d *= 180/Math.PI;
+            if(this.sprite.x < x) d += 180;
+            this.face(d);
+        }
+        return this;
     }
-    return this;
 }
 
 GameStateHandler.Preloader = function() {};
@@ -35,6 +50,7 @@ GameStateHandler.Preloader.prototype = {
 };
 var shadowTexture, lightSprite;
 var buttonpressed;
+var cams;
 GameStateHandler.Play = function() {
   var player, map;
 };
@@ -78,6 +94,9 @@ GameStateHandler.Play.prototype = {
     cursors = game.input.keyboard.createCursorKeys();
     game.camera.follow(player);
 
+
+    //hardcoding some cameras for prototype
+    cams = [new CameraEnemy(50, 50), new CameraEnemy(974, 50), new CameraEnemy(974, 526), new CameraEnemy(50, 526)];
   },
   update: function() {
     game.physics.arcade.collide(player, groundLayer);
@@ -112,6 +131,11 @@ GameStateHandler.Play.prototype = {
     if(player.body.velocity.x == 0 && player.body.velocity.y == 0){
         player.animations.stop();
         player.frame = 9*(Math.floor(player.frame/9))
+    }
+
+    //I feel like I'm being watched...
+    for(i=0;i<cams.length;i++){
+        cams[i].pointTo(player.x, player.y);
     }
  },
  updateShadowTexture: function() {
