@@ -1,114 +1,189 @@
 //Pragun Sharma
 //psharma5
 
-//Elias Klein, esklein
-
 var GameStateHandler = { };
 
 GameStateHandler.Preloader = function() {};
 GameStateHandler.Preloader.prototype = {
     preload: function() {
       console.log('Preloader: preload');
-      this.load.path = 'assets/';
+      //Loading into Asset cache
+      this.load.path = 'assets/image/';
       //adding background
       this.load.image('Background', 'FloorBackground.png');
-      //Loading into Asset cache
-      this.load.spritesheet('player', 'baddie.png', 32,32);
-      //Loading a sprite that will serve as "darkness" around the player. There's probably a better way to do this,
-      //and we'll almost definitely use it if there is one, because lighting effects are going to be important to
-      //a game like this
-      this.load.image('darkness', 'darkness.png');
+      this.load.image('prisoner', 'prisoner1.png');
+      this.game.load.atlas('player', 'atlas.png', 'atlas.json');
+      this.load.tilemap('map', 'GameMap.json', null, Phaser.Tilemap.TILED_JSON); //Loding the map with tiles
+
   },
   create: function() {
     console.log('Preloader: create');
     //Preventing the key to affect browser view
-    game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT, Phaser.Keyboard.UP, Phaser.Keyboard.DOWN]);
+    game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT,
+    Phaser.Keyboard.UP, Phaser.Keyboard.DOWN, Phaser.Keyboard.SPACEBAR]);
+
   },
   update: function() {
   this.state.start('Play');
  }
 };
-
+var shadowTexture, lightSprite;
+var buttonpressed;
+var text;
+var style;
+var prisoners;
+var childIndexArray = [];
+var showText;
 GameStateHandler.Play = function() {
-  var player, map, darkness;
+  var player, map;
 };
 GameStateHandler.Play.prototype = {
   preload: function() {
     console.log('Play: preload');
-    this.load.tilemap('map', 'GameMap.json', null, Phaser.Tilemap.TILED_JSON); //Loding the map with tiles
-    this.load.image('tiles', 'Tiles.png'); //loading tileset image
+    game.load.image('tiles', 'Tiles.png'); //loading tileset image
   },
   create: function() {
     console.log('Play: create');
+    map = game.add.tilemap('map'); //creating the map
     this.add.image(0,0, 'Background');
-    map = this.add.tilemap('map'); //creating the map
-
     var game_width = map.widthInPixels;
     var game_height = map.heightInPixels;
     game.world.setBounds(0,0,game_width, game_height);
-
     map.addTilesetImage('Tiles', 'tiles');
     groundLayer = map.createLayer('TileLayer'); //creating a layer
     groundLayer.resizeWorld();
     game.time.advancedTiming = true;
     game.physics.startSystem(Phaser.Physics.ARCADE); //The type of physics system to start
     map.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
+    prisoners = game.add.group();
+    prisoners.enableBody = true;
+    var prisoner_obj1 = prisoners.create(200,100, 'prisoner');
+    prisoner_obj1.body.immovable = true;
+    prisoner_obj1.scale.setTo(0.27);
+    childIndexArray.push(prisoners.getChildIndex(prisoner_obj1));
+    style = { font: "12px Arial", wordWrap: true,
+    wordWrapWidth: 300, align: "center", backgroundColor: "white" };
+
+
+    shadowTexture = game.add.bitmapData(game.width, game.height);
+    lightSprite = game.add.image(game.camera.x, game.camera.y, shadowTexture);
+    lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
+
 
     //Creating the player sprite
-    player = game.add.sprite(110, game.world.height-50, 'player');
-    game.physics.arcade.enable(player);
-    player.frame = 1;
-    player.body.collideWorldBounds = true;
-
+    player = game.add.sprite(game.camera.width / 2, game.camera.height / 2, 'player');
     //Setting up the sprite as a physical body in Arcade Physics Engine
+    game.physics.arcade.enable(player);
+    player.frame = 75;
     player.anchor.setTo(0.5,0.5);
+    player.body.collideWorldBounds = true;
+    player.animations.add('movingleft', Phaser.Animation.generateFrameNames('survivor-move_flashlight_', 0, 19), 60, true);
+
     cursors = game.input.keyboard.createCursorKeys();
-
-    //set up darkness
-    darkness = game.add.sprite(player.x, player.y, 'darkness');
-    darkness.anchor.setTo(0.5,0.5);
-
-    //tell camera to follow the player, and zoom in by sizing up the world by a factor of 2
     game.camera.follow(player);
-    //game.world.scale.set(2); //tilemaps seem to be working strangely when it comes to scaling like this
+    cursors = game.input.keyboard.createCursorKeys();
 
   },
   update: function() {
     game.physics.arcade.collide(player, groundLayer);
+    showText = game.physics.arcade.collide(player, prisoners);
+    lightSprite.reset(game.camera.x, game.camera.y);
+    this.updateShadowTexture();
+    if(showText) {
+      var indexForChild = Phaser.ArrayUtils.getRandomItem(childIndexArray, 0, childIndexArray.length-1);
+      var ChildPicked = prisoners.getChildAt(indexForChild);
+      text = game.add.text(0, 0, "Hey, I am stuck in this world, please give me my freedom back", style);
+      text.anchor.set(0.5);
+      text.x = Math.floor(ChildPicked.x + ChildPicked.width / 2);
+      text.y = Math.floor(ChildPicked.y + ChildPicked.height / 2) - 50;
+    }
+
+    if(cursors.left.isDown || cursors.right.isDown || cursors.up.isDown || cursors.down.isDown)
+    game.world.remove(text);
+
     player.body.velocity.x = 0;
     player.body.velocity.y = 0;
 
     //make the player move
-    //Key associated actions (left/right)
+    //Key associated actions
     if (cursors.left.isDown) {
+        player.scale.x = -1;
+        player.angle = 0;
+        player.body.velocity.x -= 155;
+        player.animations.play('movingleft');
+    }
+    else if(cursors.right.isDown) {
         player.scale.x = 1;
-        player.body.velocity.x = -200;
-    } else if(cursors.right.isDown) {
-         player.scale.x = -1;
-         player.body.velocity.x = 200;
-    } else {
-      player.body.velocity.x = 0;
+         player.angle = 0;
+         player.body.velocity.x += 155;
+         player.animations.play('movingleft');
     }
-    //(up/down)
-    if(cursors.up.isDown) {
-      player.body.velocity.y = -200;
-    } else if(cursors.down.isDown) {
-      player.body.velocity.y = 200;
-    } else {
-      player.body.velocity.y = 0;
+    else if(cursors.up.isDown) {
+      if(player.scale.x == 1)
+      player.angle = -90;
+      if(player.scale.x == -1)
+      player.angle = 90;
+      player.body.velocity.y -= 150;
+      player.animations.play('movingleft');
+
     }
-    //(spaghetti diagonals)
-    if(player.body.velocity.x != 0 && player.body.velocity.y != 0){
-      player.body.velocity.x *= 0.70710678118;//I'm adding spaghetti code to let you go diagonally
-      player.body.velocity.y *= 0.70710678118;//after all, this isn't the main place we're working on movement
+    else if(cursors.down.isDown) {
+      if(player.scale.x == -1)
+      player.angle = -90;
+      if(player.scale.x == 1)
+      player.angle = 90;
+      player.body.velocity.y += 150;
+      player.animations.play('movingleft');
+
+
     }
-    //have the darkness surround the player as they move
-    darkness.x = player.x;
-    darkness.y = player.y;
- }
+    else {
+      player.animations.stop();
+
+    }
+ },
+
+ updateShadowTexture: function() {
+   shadowTexture.context.fillStyle = 'rgb(0, 0, 0)';
+   shadowTexture.context.fillRect(0, 0, game.width,game.height);
+   var radius = 130;
+   var smallradius = 55;
+   heroY = player.y - game.camera.y;
+   heroX = player.x - game.camera.x;
+   if(cursors.left.isDown)
+   heroX = player.x - 130 - game.camera.x;
+   else if(cursors.right.isDown)
+   heroX = player.x + 130 - game.camera.x;
+   else if(cursors.down.isDown)
+   heroY = player.y + 135 - game.camera.y;
+   else if(cursors.up.isDown)
+   heroY= player.y - 135 - game.camera.y;
+
+   var gradient = shadowTexture.context.createRadialGradient(
+            heroX, heroY, radius * 0.5, heroX, heroY, radius);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+    shadowTexture.context.beginPath();
+    shadowTexture.context.fillStyle = gradient;
+    if(cursors.left.isDown)
+    shadowTexture.context.arc(heroX, heroY, radius, 0, Math.PI*radius, false);
+    if(cursors.right.isDown)
+    shadowTexture.context.arc(heroX, heroY, radius, 0, Math.PI*radius, false);
+    if(cursors.up.isDown)
+    shadowTexture.context.arc(heroX, heroY, radius, 0, Math.PI*radius, false);
+    if(cursors.down.isDown)
+    shadowTexture.context.arc(heroX, heroY, radius, 0, Math.PI*radius, false);
+    if(player.body.velocity.x == 0 && player.body.velocity.y == 0)
+    shadowTexture.context.arc(heroX, heroY-10, smallradius, 0, Math.PI*smallradius, false);
+    shadowTexture.context.fill();
+    shadowTexture.dirty = true;
+  },
+
+
 };
 
-  var game = new Phaser.Game(400, 400, Phaser.AUTO); // ooh, fancy, you can't even see what would be less than the screen size!
+
+  var game = new Phaser.Game(1024, 576, Phaser.AUTO);
   game.state.add('Preloader', GameStateHandler.Preloader);
   game.state.add('Play', GameStateHandler.Play);
   game.state.start('Preloader');
