@@ -147,7 +147,7 @@ GameStateHandler.Play.prototype = {
         //creating prisoner(s)
         prisoners = game.add.group();
         prisoners.enableBody = true;
-        var prisoner_obj1 = new Prisoner(200, 100, prisoners);
+        new Prisoner(200, 100, prisoners);
 
         //text style for text popups
         style = {
