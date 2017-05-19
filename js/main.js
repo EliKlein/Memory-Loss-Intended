@@ -108,7 +108,6 @@ GameStateHandler.Play.prototype = {
     //make the player move
     //Key associated actions
     if (cursors.left.isDown) {
-        player.scale.x = 1;
         player.body.velocity.x -= 200;
         player.animations.play('left');
     }
