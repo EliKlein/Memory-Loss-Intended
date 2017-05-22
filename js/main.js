@@ -96,6 +96,17 @@ class Shadows{
     }
 }
 
+function makeMap(){
+    //creating the map (I feel like maybe this should go in its own class, but it might take more work than the other things)
+    var m = game.add.tilemap('map'); 
+    game.add.image(0,0, 'Background');
+    game.world.setBounds(0,0,m.widthInPixels, m.heightInPixels);
+    map.addTilesetImage('Tiles', 'tiles');
+    groundLayer = map.createLayer('TileLayer'); //creating a layer
+    groundLayer.resizeWorld();
+    map.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
+}
+
 GameStateHandler.Preloader = function() {};
 GameStateHandler.Preloader.prototype = {
     preload: function() {
@@ -131,18 +142,11 @@ GameStateHandler.Play.prototype = {
     create: function() {
         console.log('Play: create');
 
-        //creating the map (I feel like maybe this should go in its own class, but it might take more work than the other things)
-        map = game.add.tilemap('map'); 
-        this.add.image(0,0, 'Background');
-        var game_width = map.widthInPixels;
-        var game_height = map.heightInPixels;
-        game.world.setBounds(0,0,game_width, game_height);
-        map.addTilesetImage('Tiles', 'tiles');
-        groundLayer = map.createLayer('TileLayer'); //creating a layer
-        groundLayer.resizeWorld();
+        
         game.time.advancedTiming = true;
-        game.physics.startSystem(Phaser.Physics.ARCADE); //The type of physics system to start
-        map.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
+        game.physics.startSystem(Phaser.Physics.ARCADE);
+
+        map = makeMap();
 
         //creating prisoner(s)
         prisoners = game.add.group();
