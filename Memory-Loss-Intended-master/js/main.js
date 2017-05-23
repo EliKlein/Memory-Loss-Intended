@@ -62,7 +62,7 @@ class Prisoner{
         this.sprite.body.immovable = true;
         //scale to match player better
         this.sprite.scale.setTo(0.27);
-        prisonerArray.push(this);
+        prisonerArray.push(this);//adds this to the array?
     }
 }
 
@@ -153,25 +153,21 @@ GameStateHandler.Play.prototype = {
             align: "center",
             backgroundColor: "white"
         };
+        console.log(prisonerArray);
         shadowObj = new Shadows();
         player = new Player(game.camera.width / 2, game.camera.height / 2);
+        //player.enableBody = true;//used to true and make onCollide work, doesn't
         game.camera.follow(player.sprite);
         cursors = game.input.keyboard.createCursorKeys();
+        //player.body.onCollide = new Phaser.Signal();// can't set property of undefined
+        //player.body.onCollide.add(showText, this);
     },
     update: function() {
         game.physics.arcade.collide(player.sprite, groundLayer);
-        showText = game.physics.arcade.collide(player.sprite, prisoners);
+        //game.physics.arcade.collide(player.sprite, prisoners);//need to set to to be the one you touch
+        game.physics.arcade.overlap(player.sprite, prisoners, showText, null, this);//this does not work
         //lightSprite.reset(game.camera.x, game.camera.y);//lightSprite not defined
         shadowObj.update(player.sprite, cursors);
-        if(showText) {
-            var selected = Phaser.ArrayUtils.getRandomItem(prisonerArray, 0, prisonerArray.length-1);
-            var ChildPicked = selected.sprite;
-            text = game.add.text(0, 0, "Hey, I am stuck in this world, please give me my freedom back", style);
-            text.anchor.set(0.5);
-            text.x = Math.floor(ChildPicked.x + ChildPicked.width / 2);
-            text.y = Math.floor(ChildPicked.y + ChildPicked.height / 2) - 50;
-        }
-
         if(cursors.left.isDown || cursors.right.isDown || cursors.up.isDown || cursors.down.isDown)
             game.world.remove(text);
         player.update(cursors);
@@ -181,3 +177,17 @@ GameStateHandler.Play.prototype = {
 game.state.add('Preloader', GameStateHandler.Preloader);
 game.state.add('Play', GameStateHandler.Play);
 game.state.start('Preloader');
+
+function showText(player, prisoner){
+    console.log('showText');//does not show
+    //var selected = Phaser.ArrayUtils.getRandomItem(prisonerArray, 0, prisonerArray.length-1);//picks random prisoner to speak
+    console.log(prisoner);//defined
+    console.log(prisoner.sprite);//undefined
+    var ChildPicked = prisoner;
+    text = game.add.text(0, 0, "Hey, I am stuck in this world, please give me my freedom back", style);
+    text.anchor.set(0.5);
+    console.log(text);//defined
+    console.log(ChildPicked);//undefined
+    text.x = Math.floor(ChildPicked.x + ChildPicked.width / 2);//overlap works but now undefined here
+    text.y = Math.floor(ChildPicked.y + ChildPicked.height / 2) - 50;
+}
