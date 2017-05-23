@@ -287,7 +287,7 @@ GameStateHandler.Preloader.prototype = {
         this.load.image('Background', 'FloorBackground.png');
         this.load.image('prisoner', 'prisoner1.png');
         this.load.atlas('player', 'atlas.png', 'atlas.json');
-        this.load.spritesheet('camera', 'camera V2.png', 32, 32, 8);
+        this.load.spritesheet('camera', 'Camera.png', 32, 32, 8);
         this.load.tilemap('map', 'GameMap.json', null, Phaser.Tilemap.TILED_JSON); //Loding the map with tiles
         
     },
