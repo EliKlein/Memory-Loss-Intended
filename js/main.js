@@ -16,6 +16,7 @@ var PLAYER_SPEED = 150;
 
 class Player {
     constructor(x, y) {
+        this.light = new LightSource(this, 175, 45);
         //Creating the player sprite
         var player = game.add.sprite(x, y, 'player');
         //Setting up the sprite as a physical body in Arcade Physics Engine
@@ -96,7 +97,6 @@ class CameraEnemy{
         this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
         this.sprite.anchor.setTo(0.5,0.35);
         this.direction = this.sprite.angle;
-        this.light = new LightSource(this, 300, 55);
     }
     face(dir){
         while(dir < 0){//js doesn't do negative modulo correctly. it's dumb.
@@ -172,22 +172,24 @@ class LightSource{
         //prototype I guess
         var sX = this.source.getX();
         var sY = this.source.getY();
-        var portAng = this.source.getAngle() - (this.arcWidth/2);
-        var portLine = new Phaser.Line(sX, sY, sX + Math.cos(portAng*Math.PI/180)*this.strength, sY + Math.sin(portAng*Math.PI/180)*this.strength);
-        var portInt = getWallIntersection(walls, portLine);
-        var starboardAng = portAng + this.arcWidth;
-        var starboardLine = new Phaser.Line(sX, sY, sX + Math.cos(starboardAng*Math.PI/180)*this.strength, sY + Math.sin(starboardAng*Math.PI/180)*this.strength)
-        var starboardInt = getWallIntersection(walls, starboardLine);
+        var points = [];
+        var startAngle = this.source.getAngle() - (this.arcWidth/2);
+        var endAngle = startAngle + this.arcWidth;
+
+        for(var currentAngle = startAngle; currentAngle < endAngle; currentAngle += this.arcWidth / 60){
+            var currentLine = new Phaser.Line(sX, sY, sX + Math.cos(currentAngle*Math.PI/180)*this.strength, sY + Math.sin(currentAngle*Math.PI/180)*this.strength);
+            var currentInt = getWallIntersection(walls, currentLine);
+            if(currentInt){
+                points.push({x:currentInt.x, y:currentInt.y});
+            }else{
+                points.push({x:currentLine.end.x, y:currentLine.end.y});
+            }
+        }
         lightTexture.context.beginPath();
         lightTexture.context.moveTo(sX, sY);
-        if(portInt)
-            lightTexture.context.lineTo(portInt.x, portInt.y);
-        else
-            lightTexture.context.lineTo(portLine.end.x, portLine.end.y);
-        if(starboardInt)
-            lightTexture.context.lineTo(starboardInt.x, starboardInt.y);
-        else
-            lightTexture.context.lineTo(starboardLine.end.x, starboardLine.end.y);
+        for(var i = 0; i < points.length; i++){
+            lightTexture.context.lineTo(points[i].x, points[i].y);
+        }
         lightTexture.context.lineTo(sX, sY);
         lightTexture.context.stroke();
         lightTexture.dirty = true;
@@ -361,7 +363,7 @@ GameStateHandler.Play.prototype = {
 
         lightTexture.context.clearRect(0, 0, game.width, game.height);
 
-        testCamera.light.draw();
+        player.light.draw();
         
         var intersect = getWallIntersection(walls, new Phaser.Line(testCamera.sprite.x, testCamera.sprite.y, player.sprite.x, player.sprite.y));
         if (!intersect) {
