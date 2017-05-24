@@ -75,11 +75,6 @@ class Player{
         return this.sprite.x;
     }
     getY(){
-    }
-    getX(){
-        return this.sprite.x;
-    }
-    getY(){
         return this.sprite.y;
     }
     getAngle(){
@@ -414,17 +409,21 @@ GameStateHandler.Play.prototype = {
         groundLayer = map.createLayer('TileLayer'); //creating a layer
         groundLayer.resizeWorld();
         map.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
+<<<<<<< HEAD
         
         game.input.addMoveCallback(function(pointer, x, y){
             if(player.body.velocity.x != 0 || player.body.velocity.y != 0) player.pointTo(x + game.camera.x, y + game.camera.y);
         }, game);
 
+=======
+>>>>>>> 597b7c61672baf454b5c3a4bce310ce7dd4d18a5
         cursors = game.input.keyboard.createCursorKeys();
     },
     update: function() {
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, testCamera.sprite);
         showText = game.physics.arcade.collide(player.sprite, prisoners);
+<<<<<<< HEAD
         //testCamera.pointTo(player.sprite.x, player.sprite.y);
         testCamera.sprite.angle++;
 
@@ -436,6 +435,11 @@ GameStateHandler.Play.prototype = {
             console.log("I SEE YOU");
         }
 
+=======
+        testCamera.pointTo(player.sprite.x, player.sprite.y);
+        lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
+        doLights([player]);
+>>>>>>> 597b7c61672baf454b5c3a4bce310ce7dd4d18a5
         //shadowObj.update(player.sprite, cursors);
     
         if (cursors.left.isDown || cursors.right.isDown || cursors.up.isDown || cursors.down.isDown){

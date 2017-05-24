@@ -14,11 +14,9 @@ var testCamera;
 var showText;
 var player;
 var PLAYER_SPEED = 150;
-var randomX;
-var randomY;
 
-class Player{
-    constructor(x, y){
+class Player {
+    constructor(x, y) {
         this.light = new LightSource(this, 225, 55);
         //Creating the player sprite
         var player = game.add.sprite(x, y, 'player');
@@ -29,11 +27,8 @@ class Player{
         player.body.collideWorldBounds = true;
         player.animations.add('moving', Phaser.Animation.generateFrameNames('survivor-move_flashlight_', 0, 19), 60, true);
         this.sprite = player;
-        player.body.onCollide = new Phaser.Signal();//might want to move this to prisoner class
-        player.body.onCollide.add(showText, this);
     }
     update(cursors) {
-        
         //make the player move
         this.sprite.body.velocity.x = 0;
         this.sprite.body.velocity.y = 0;
@@ -65,16 +60,6 @@ class Player{
             this.sprite.angle = Math.atan(this.sprite.body.velocity.y / this.sprite.body.velocity.x) * 180 / Math.PI;
             if (this.sprite.body.velocity.x < 0) this.sprite.angle += 180;
         }
-
-        
-    }
-    pointTo(x,y){
-        this.sprite.angle = directionTo(this, x, y);
-    }
-    getX(){
-        return this.sprite.x;
-    }
-    getY(){
     }
     getX(){
         return this.sprite.x;
@@ -87,12 +72,14 @@ class Player{
     }
 }
 
-class Prisoner{
+
+class Prisoner {
     constructor(x, y, prisonerGroup) {
-        this.sprite = prisoners.create(x, y, 'Prisoner', 'F1');
+        this.sprite = prisoners.create(x, y, 'prisoner');
         this.sprite.body.immovable = true;
         //scale to match player better
         this.sprite.scale.setTo(0.27);
+        
         prisonerArray.push(this);
     }
     getX(){
@@ -108,12 +95,21 @@ class Prisoner{
 
 class CameraEnemy{
     constructor(xSpawn, ySpawn){
-        this.light = new LightSource(this, 225, 55);
         this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
         this.sprite.anchor.setTo(0.5,0.35);
         this.direction = this.sprite.angle;
     }
-    pointTo(x,y    }
+    pointTo(x,y){
+        var d;
+        if(this.sprite.x == x){
+            d = 0
+        }else{
+            d = Math.atan((this.sprite.y-y)/(this.sprite.x-x));
+        }
+        d *= 180/Math.PI;
+        if(this.sprite.x < x) d += 180;
+        this.sprite.angle = d;
+    }
     /*face(dir){
         while(dir < 0){//js doesn't do negative modulo correctly. it's dumb.
             dir += 360;
@@ -217,11 +213,6 @@ class LightSource{
         lightTexture.dirty = true;
     }
     visible(target){
-        //I think with reeeeeally big arc widths, this might screw up occasionally? don't think it matters since we're never going to use numbers >180 degrees
-        function correctAngle(angle){
-            if(angle > 0)return angle - 180;
-            return angle + 180;
-        }
         var sX = this.source.getX();
         var sY = this.source.getY();
         var tX = target.getX();
@@ -229,25 +220,24 @@ class LightSource{
 
         if(Math.sqrt((sX-tX)*(sX-tX)+(sY-tY)*(sY-tY)) > this.strength) return false;
 
-        var angleDiff;
-        if(sX == tX){
-            if(sY == tY)return true;
-            if(sY > tY) angleDiff = -90;
-            else angleDiff = 90
-        } else{
-            angleDiff = Math.atan((sY-tY)/(sX-tX))*180/Math.PI;
-        }
-
+        //crazy math because I don't know what angles are going to be rounded where and I just thought of spaghetti logic that should work
+        //(just starting with the actual atan to find the angle to start with)
+        var angleDiff = Math.atan((sY-tY)/(sX-tX))*180/Math.PI;
         var portAng = this.source.getAngle() - (this.arcWidth/2);
+        while(portAng < 0){
+            portAng += 360;
+        }
         var starboardAng = portAng + this.arcWidth;
-        if(sX > tX){
-            portAng = correctAngle(portAng);
-            starboardAng = correctAngle(starboardAng);
+        portAng = portAng % 90;
+        starboardAng = starboardAng % 90;
+        angleDiff = (angleDiff + 360) % 90;
+        if(portAng > starboardAng){
+            if(angleDiff >= portAng) angleDiff -= 90;
+            portAng -= 90;
+            if(true){}
         }
         if(angleDiff < portAng || angleDiff > starboardAng) return false;
         var intersect = getWallIntersection(walls, new Phaser.Line(sX, sY, tX, tY));
-        if(intersect)return false;
-        return true;
     }
 }
 
@@ -285,18 +275,6 @@ function makeMap() {
     return m;
 }
 
-function directionTo(source, x, y){
-        var d;
-        if(source.getX() == x){
-            d = 0
-        }else{
-            d = Math.atan((source.getY()-y)/(source.getX()-x));
-        }
-        d *= 180/Math.PI;
-        if(source.getX() < x) return d + 180;
-        return d;
-}
-
 function getWallIntersection(walls, ray) {
     var distanceToWall = Number.POSITIVE_INFINITY;
     var closestIntersection = null;
@@ -321,31 +299,9 @@ function getWallIntersection(walls, ray) {
     return closestIntersection;
     
 }
-
-function showText(player, prisoner){
-    //var selected = Phaser.ArrayUtils.getRandomItem(prisonerArray, 0, prisonerArray.length-1);//picks random prisoner to speak
-    var ChildPicked = prisoner;
-    text = game.add.text(0, 0, "Hey, I am stuck in this world, please give me my freedom back", style);
-    text.anchor.set(0.5);
-    text.x = Math.floor(ChildPicked.x + ChildPicked.width / 2);//overlap works but now undefined here
-    text.y = Math.floor(ChildPicked.y + ChildPicked.height / 2) - 50;
-}
-
-function getRandomCoordinates(){            
-    var randX = Math.floor((Math.random() * game.world.width) + 1);            
-    var randY = Math.floor((Math.random() * game.world.height) + 1);            
-    if(map.getTile(randX, randY) != null){                
-        getRandomCoordinates();            
-    }else{                
-        randomX = randX;                
-        randomY = randY;                
-        return;            
-    }        
-}
-
-GameStateHandler.Preloader = function() {};
+GameStateHandler.Preloader = function () { };
 GameStateHandler.Preloader.prototype = {
-    preload: function() {
+    preload: function () {
         console.log('Preloader: preload');
         //Loading into Asset cache
         this.load.path = 'assets/';
@@ -355,31 +311,35 @@ GameStateHandler.Preloader.prototype = {
         this.load.atlas('player', 'atlas.png', 'atlas.json');
         this.load.image('camera', 'Camera.png');
         this.load.tilemap('map', 'GameMap.json', null, Phaser.Tilemap.TILED_JSON); //Loding the map with tiles
-        this.game.load.atlas('Prisoner', 'PTest.png', 'PTest.json');
-  },
-  create: function() {
-    console.log('Preloader: create');
-    //Preventing the key to affect browser view
-    game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT,
-    Phaser.Keyboard.UP, Phaser.Keyboard.DOWN, Phaser.Keyboard.SPACEBAR]);
-  },
-  update: function() {
-    this.state.start('Play');
- }
+        
+    },
+    create: function () {
+        console.log('Preloader: create');
+        //Preventing the key to affect browser view
+        game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT,
+        Phaser.Keyboard.UP, Phaser.Keyboard.DOWN, Phaser.Keyboard.SPACEBAR]);
+        
+    },
+    update: function () {
+        this.state.start('Play');
+    }
 };
-GameStateHandler.Play = function() {
-  var player, map;
+GameStateHandler.Play = function () {
+    var player, map;
 };
 GameStateHandler.Play.prototype = {
-    preload: function() {
+    preload: function () {
         console.log('Play: preload');
         game.load.image('tiles', 'Tiles.png'); //loading tileset image
     },
-    create: function() {
+    create: function () {
         console.log('Play: create');
+        
         game.time.advancedTiming = true;
         game.physics.startSystem(Phaser.Physics.ARCADE);
+        
         map = makeMap();
+        
         walls = [];
         //Adding each tile to an array
         for (var x = 0; x < map.width; ++x) {
@@ -388,14 +348,14 @@ GameStateHandler.Play.prototype = {
                     walls.push(new WallTile(map.getTile(x, y)));
             }
         }
+
         //creating prisoner(s)
         prisoners = game.add.group();
         prisoners.enableBody = true;
-        for(var i = 0; i < 7; i++){
-            getRandomCoordinates();
-            new Prisoner(randomX, randomY, prisoners);//testing making multiple prisoners
-        }
+        new Prisoner(200, 100, prisoners);
+
         testCamera = new CameraEnemy(600, 95)
+        
         //text style for text popups
         style = {
             font: "12px Arial",
@@ -404,46 +364,50 @@ GameStateHandler.Play.prototype = {
             align: "center",
             backgroundColor: "white"
         };
+        
         shadowObj = new Shadows();
         lightTexture = game.add.bitmapData(map.widthInPixels, map.heightInPixels);
         lightSprite = game.add.image(0, 0, lightTexture);
         lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
+        
         player = new Player(game.camera.width / 2, game.camera.height / 2);
+        
         game.camera.follow(player.sprite);
+
         map.addTilesetImage('Tiles', 'tiles');
         groundLayer = map.createLayer('TileLayer'); //creating a layer
         groundLayer.resizeWorld();
         map.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
         
-        game.input.addMoveCallback(function(pointer, x, y){
-            if(player.body.velocity.x != 0 || player.body.velocity.y != 0) player.pointTo(x + game.camera.x, y + game.camera.y);
-        }, game);
-
         cursors = game.input.keyboard.createCursorKeys();
     },
-    update: function() {
+    update: function () {
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, testCamera.sprite);
         showText = game.physics.arcade.collide(player.sprite, prisoners);
-        //testCamera.pointTo(player.sprite.x, player.sprite.y);
-        testCamera.sprite.angle++;
+        testCamera.pointTo(player.sprite.x, player.sprite.y);
 
         lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
 
-        doLights([player, testCamera]);
-
-        if(testCamera.light.visible(player)){
-            console.log("I SEE YOU");
-        }
+        doLights([player]);
 
         //shadowObj.update(player.sprite, cursors);
-    
-        if (cursors.left.isDown || cursors.right.isDown || cursors.up.isDown || cursors.down.isDown){
-            game.world.remove(text);
+        if (showText) {
+            var selected = Phaser.ArrayUtils.getRandomItem(prisonerArray, 0, prisonerArray.length - 1);
+            var ChildPicked = selected.sprite;
+            text = game.add.text(0, 0, "Hey, I am stuck in this world, please give me my freedom back", style);
+            text.anchor.set(0.5);
+            text.x = Math.floor(ChildPicked.x + ChildPicked.width / 2);
+            text.y = Math.floor(ChildPicked.y + ChildPicked.height / 2) - 50;
         }
+        
+        if (cursors.left.isDown || cursors.right.isDown || cursors.up.isDown || cursors.down.isDown)
+        game.world.remove(text);
+        
         player.update(cursors);
-   }
+    }
 };
+
 
 game.state.add('Preloader', GameStateHandler.Preloader);
 game.state.add('Play', GameStateHandler.Play);
