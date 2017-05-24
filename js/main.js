@@ -29,6 +29,7 @@ class Player {
         this.sprite = player;
     }
     update(cursors) {
+        
         //make the player move
         this.sprite.body.velocity.x = 0;
         this.sprite.body.velocity.y = 0;
@@ -60,6 +61,11 @@ class Player {
             this.sprite.angle = Math.atan(this.sprite.body.velocity.y / this.sprite.body.velocity.x) * 180 / Math.PI;
             if (this.sprite.body.velocity.x < 0) this.sprite.angle += 180;
         }
+
+        
+    }
+    pointTo(x,y){
+        this.sprite.angle = directionTo(this, x, y);
     }
     getX(){
         return this.sprite.x;
@@ -95,20 +101,13 @@ class Prisoner {
 
 class CameraEnemy{
     constructor(xSpawn, ySpawn){
+        this.light = new LightSource(this, 225, 55);
         this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
         this.sprite.anchor.setTo(0.5,0.35);
         this.direction = this.sprite.angle;
     }
     pointTo(x,y){
-        var d;
-        if(this.sprite.x == x){
-            d = 0
-        }else{
-            d = Math.atan((this.sprite.y-y)/(this.sprite.x-x));
-        }
-        d *= 180/Math.PI;
-        if(this.sprite.x < x) d += 180;
-        this.sprite.angle = d;
+        this.sprite.angle = directionTo(this, x, y);
     }
     /*face(dir){
         while(dir < 0){//js doesn't do negative modulo correctly. it's dumb.
@@ -213,6 +212,11 @@ class LightSource{
         lightTexture.dirty = true;
     }
     visible(target){
+        //I think with reeeeeally big arc widths, this might screw up occasionally? don't think it matters since we're never going to use numbers >180 degrees
+        function correctAngle(angle){
+            if(angle > 0)return angle - 180;
+            return angle + 180;
+        }
         var sX = this.source.getX();
         var sY = this.source.getY();
         var tX = target.getX();
@@ -220,24 +224,25 @@ class LightSource{
 
         if(Math.sqrt((sX-tX)*(sX-tX)+(sY-tY)*(sY-tY)) > this.strength) return false;
 
-        //crazy math because I don't know what angles are going to be rounded where and I just thought of spaghetti logic that should work
-        //(just starting with the actual atan to find the angle to start with)
-        var angleDiff = Math.atan((sY-tY)/(sX-tX))*180/Math.PI;
-        var portAng = this.source.getAngle() - (this.arcWidth/2);
-        while(portAng < 0){
-            portAng += 360;
+        var angleDiff;
+        if(sX == tX){
+            if(sY == tY)return true;
+            if(sY > tY) angleDiff = -90;
+            else angleDiff = 90
+        } else{
+            angleDiff = Math.atan((sY-tY)/(sX-tX))*180/Math.PI;
         }
+
+        var portAng = this.source.getAngle() - (this.arcWidth/2);
         var starboardAng = portAng + this.arcWidth;
-        portAng = portAng % 90;
-        starboardAng = starboardAng % 90;
-        angleDiff = (angleDiff + 360) % 90;
-        if(portAng > starboardAng){
-            if(angleDiff >= portAng) angleDiff -= 90;
-            portAng -= 90;
-            if(true){}
+        if(sX > tX){
+            portAng = correctAngle(portAng);
+            starboardAng = correctAngle(starboardAng);
         }
         if(angleDiff < portAng || angleDiff > starboardAng) return false;
         var intersect = getWallIntersection(walls, new Phaser.Line(sX, sY, tX, tY));
+        if(intersect)return false;
+        return true;
     }
 }
 
@@ -273,6 +278,18 @@ function makeMap() {
     game.add.image(0, 0, 'Background');
     game.world.setBounds(0, 0, m.widthInPixels, m.heightInPixels);
     return m;
+}
+
+function directionTo(source, x, y){
+        var d;
+        if(source.getX() == x){
+            d = 0
+        }else{
+            d = Math.atan((source.getY()-y)/(source.getX()-x));
+        }
+        d *= 180/Math.PI;
+        if(source.getX() < x) return d + 180;
+        return d;
 }
 
 function getWallIntersection(walls, ray) {
@@ -379,17 +396,26 @@ GameStateHandler.Play.prototype = {
         groundLayer.resizeWorld();
         map.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
         
+        game.input.addMoveCallback(function(pointer, x, y){
+            if(player.body.velocity.x != 0 || player.body.velocity.y != 0) player.pointTo(x + game.camera.x, y + game.camera.y);
+        }, game);
+
         cursors = game.input.keyboard.createCursorKeys();
     },
     update: function () {
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, testCamera.sprite);
         showText = game.physics.arcade.collide(player.sprite, prisoners);
-        testCamera.pointTo(player.sprite.x, player.sprite.y);
+        //testCamera.pointTo(player.sprite.x, player.sprite.y);
+        testCamera.sprite.angle++;
 
         lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
 
-        doLights([player]);
+        doLights([player, testCamera]);
+
+        if(testCamera.light.visible(player)){
+            console.log("I SEE YOU");
+        }
 
         //shadowObj.update(player.sprite, cursors);
         if (showText) {
