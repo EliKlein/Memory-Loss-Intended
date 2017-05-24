@@ -4,6 +4,7 @@ var map;
 var walls;
 var shadowObj;
 var lightTexture;
+var lightSprite;
 var buttonpressed;
 var text;
 var style;
@@ -16,7 +17,7 @@ var PLAYER_SPEED = 150;
 
 class Player {
     constructor(x, y) {
-        this.light = new LightSource(this, 175, 45);
+        this.light = new LightSource(this, 225, 55);
         //Creating the player sprite
         var player = game.add.sprite(x, y, 'player');
         //Setting up the sprite as a physical body in Arcade Physics Engine
@@ -98,7 +99,18 @@ class CameraEnemy{
         this.sprite.anchor.setTo(0.5,0.35);
         this.direction = this.sprite.angle;
     }
-    face(dir){
+    pointTo(x,y){
+        var d;
+        if(this.sprite.x == x){
+            d = 0
+        }else{
+            d = Math.atan((this.sprite.y-y)/(this.sprite.x-x));
+        }
+        d *= 180/Math.PI;
+        if(this.sprite.x < x) d += 180;
+        this.sprite.angle = d;
+    }
+    /*face(dir){
         while(dir < 0){//js doesn't do negative modulo correctly. it's dumb.
             dir += 360;
         }
@@ -121,7 +133,7 @@ class CameraEnemy{
         d *= 180/Math.PI;
         if(this.sprite.x < x) d += 180;
         this.face(d);
-    }
+    }*/
     getX(){
         return this.sprite.x;
     }
@@ -129,7 +141,7 @@ class CameraEnemy{
         return this.sprite.y;
     }
     getAngle(){
-        return this.direction ;
+        return this.sprite.angle;
     }
 }
 
@@ -176,7 +188,7 @@ class LightSource{
         var startAngle = this.source.getAngle() - (this.arcWidth/2);
         var endAngle = startAngle + this.arcWidth;
 
-        for(var currentAngle = startAngle; currentAngle < endAngle; currentAngle += this.arcWidth / 60){
+        for(var currentAngle = startAngle; currentAngle <= endAngle; currentAngle += this.arcWidth / 60){
             var currentLine = new Phaser.Line(sX, sY, sX + Math.cos(currentAngle*Math.PI/180)*this.strength, sY + Math.sin(currentAngle*Math.PI/180)*this.strength);
             var currentInt = getWallIntersection(walls, currentLine);
             if(currentInt){
@@ -185,13 +197,19 @@ class LightSource{
                 points.push({x:currentLine.end.x, y:currentLine.end.y});
             }
         }
+        var g = lightTexture.context.createRadialGradient(sX, sY, this.strength * 0.5, sX, sY, this.strength);
+        g.addColorStop(0, 'rgba(255,255,255,1.0)');
+        g.addColorStop(1, 'rgba(255,255,255,0.0)');
         lightTexture.context.beginPath();
+        lightTexture.context.fillStyle = g;
         lightTexture.context.moveTo(sX, sY);
         for(var i = 0; i < points.length; i++){
             lightTexture.context.lineTo(points[i].x, points[i].y);
         }
         lightTexture.context.lineTo(sX, sY);
         lightTexture.context.stroke();
+        //lightTexture.context.arc(sX, sY, this.strength, startAngle, endAngle, false);
+        lightTexture.context.fill();
         lightTexture.dirty = true;
     }
     visible(target){
@@ -223,6 +241,14 @@ class LightSource{
     }
 }
 
+function doLights(objectsWithLights){
+    lightTexture.context.fillStyle = "rgba(0,0,0, 0.8)";
+    lightTexture.context.fillRect(game.camera.x, game.camera.y, game.width, game.height);
+    for(var i = 0; i < objectsWithLights.length; i++){
+        objectsWithLights[i].light.draw();
+    }
+}
+
 class WallTile{
     constructor(mapTile){
         this.x1 = mapTile.x * mapTile.width;
@@ -246,10 +272,6 @@ function makeMap() {
     var m = game.add.tilemap('map');
     game.add.image(0, 0, 'Background');
     game.world.setBounds(0, 0, m.widthInPixels, m.heightInPixels);
-    m.addTilesetImage('Tiles', 'tiles');
-    groundLayer = m.createLayer('TileLayer'); //creating a layer
-    groundLayer.resizeWorld();
-    m.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
     return m;
 }
 
@@ -332,7 +354,7 @@ GameStateHandler.Play.prototype = {
         prisoners.enableBody = true;
         new Prisoner(200, 100, prisoners);
 
-        testCamera = new CameraEnemy(460, 95)
+        testCamera = new CameraEnemy(600, 95)
         
         //text style for text popups
         style = {
@@ -343,15 +365,19 @@ GameStateHandler.Play.prototype = {
             backgroundColor: "white"
         };
         
+        shadowObj = new Shadows();
+        lightTexture = game.add.bitmapData(map.widthInPixels, map.heightInPixels);
+        lightSprite = game.add.image(0, 0, lightTexture);
+        lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
+        
         player = new Player(game.camera.width / 2, game.camera.height / 2);
         
-        shadowObj = new Shadows();
-        lightTexture = game.add.bitmapData(game.width, game.height);
-        lightTexture.context.fillStyle = 'rgb(255,255,255)';
-        lightTexture.context.strokeStyle = 'rgb(255,255,255)';
-        game.add.image(0,0,lightTexture);
-        
         game.camera.follow(player.sprite);
+
+        map.addTilesetImage('Tiles', 'tiles');
+        groundLayer = map.createLayer('TileLayer'); //creating a layer
+        groundLayer.resizeWorld();
+        map.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
         
         cursors = game.input.keyboard.createCursorKeys();
     },
@@ -361,25 +387,9 @@ GameStateHandler.Play.prototype = {
         showText = game.physics.arcade.collide(player.sprite, prisoners);
         testCamera.pointTo(player.sprite.x, player.sprite.y);
 
-        lightTexture.context.clearRect(0, 0, game.width, game.height);
+        lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
 
-        player.light.draw();
-        
-        var intersect = getWallIntersection(walls, new Phaser.Line(testCamera.sprite.x, testCamera.sprite.y, player.sprite.x, player.sprite.y));
-        if (!intersect) {
-            //Draw a line from the camera to the player
-            lightTexture.context.beginPath();
-            lightTexture.context.moveTo(player.sprite.x, player.sprite.y);
-            lightTexture.context.lineTo(testCamera.sprite.x, testCamera.sprite.y);
-            lightTexture.context.stroke();
-            lightTexture.dirty = true;
-        } else {
-            lightTexture.context.beginPath();
-            lightTexture.context.moveTo(intersect.x, intersect.y);
-            lightTexture.context.lineTo(testCamera.sprite.x, testCamera.sprite.y);
-            lightTexture.context.stroke();
-            lightTexture.dirty = true;
-        }
+        doLights([player]);
 
         //shadowObj.update(player.sprite, cursors);
         if (showText) {
