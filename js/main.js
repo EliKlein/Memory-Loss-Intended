@@ -11,7 +11,7 @@ var style;
 var prisoners;
 var prisonerArray = [];
 var testCamera;
-var showText;
+var prisonerCollision;
 var player;
 var PLAYER_SPEED = 150;
 var randomX;
@@ -113,7 +113,9 @@ class CameraEnemy{
         this.sprite.anchor.setTo(0.5,0.35);
         this.direction = this.sprite.angle;
     }
-    pointTo(x,y    }
+    pointTo(x,y){
+        this.sprite.angle = directionTo(this, x, y);
+    }
     /*face(dir){
         while(dir < 0){//js doesn't do negative modulo correctly. it's dumb.
             dir += 360;
@@ -424,7 +426,7 @@ GameStateHandler.Play.prototype = {
     update: function() {
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, testCamera.sprite);
-        showText = game.physics.arcade.collide(player.sprite, prisoners);
+        prisonerCollision = game.physics.arcade.collide(player.sprite, prisoners);
         //testCamera.pointTo(player.sprite.x, player.sprite.y);
         testCamera.sprite.angle++;
 
