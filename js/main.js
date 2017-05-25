@@ -16,6 +16,7 @@ var player;
 var PLAYER_SPEED = 150;
 var randomX;
 var randomY;
+var prisonerStoryList;
 
 class Player{
     constructor(x, y){
@@ -87,10 +88,41 @@ class Player{
     }
 }
 
+class Story{
+    constructor(message, truth, hint){
+        this.message = message;
+        this.truth = truth;
+        this.hint = hint;
+    }
+}
+
+class StoryList{
+    constructor(){
+        this.list = [];
+        this.reset();
+    }
+    reset(){
+        this.list.push(new Story("This test story is true", true, ""));
+        this.list.push(new Story("This story tests as true", true, ""));
+        this.list.push(new Story("This narrative is a true test", true, ""));
+        this.list.push(new Story("Testing this story yields true", true, ""));
+        this.list.push(new Story("We're testing this narrative truthfully", true, ""));
+        this.list.push(new Story("This test story is false", false, ""));
+        this.list.push(new Story("This story tests as false", false, ""));
+        this.list.push(new Story("This narrative is NOT a true test", false, ""));
+        this.list.push(new Story("Testing this story yields false", false, ""));
+        this.list.push(new Story("We're testing this narrative falsely", false, ""));
+    }
+    getRandom(){
+        return this.list.splice(Math.floor(Math.random()*this.list.length), 1)[0];
+    }
+}
+
 class Prisoner{
     constructor(x, y, prisonerGroup) {
         this.sprite = prisoners.create(x, y, 'Prisoner', 'F1');
         this.sprite.body.immovable = true;
+        this.story = prisonerStoryList.getRandom();
         //scale to match player better
         this.sprite.scale.setTo(0.27);
         prisonerArray.push(this);
@@ -290,12 +322,13 @@ function makeMap() {
 function directionTo(source, x, y){
         var d;
         if(source.getX() == x){
-            d = 0
+            d = Math.PI/2;
+            if(source.getY() > y) d = -(Math.PI/2);
         }else{
             d = Math.atan((source.getY()-y)/(source.getX()-x));
         }
         d *= 180/Math.PI;
-        if(source.getX() < x) return d + 180;
+        if(source.getX() > x) return d + 180;
         return d;
 }
 
@@ -327,7 +360,14 @@ function getWallIntersection(walls, ray) {
 function showText(player, prisoner){
     //var selected = Phaser.ArrayUtils.getRandomItem(prisonerArray, 0, prisonerArray.length-1);//picks random prisoner to speak
     var ChildPicked = prisoner;
-    text = game.add.text(0, 0, "Hey, I am stuck in this world, please give me my freedom back", style);
+    for(var i = 0; i < prisonerArray.length; i++){
+        if(prisonerArray[i].sprite === ChildPicked){
+            prisoner = prisonerArray[i];
+            break;
+        }
+    }
+    text = game.add.text(0, 0, prisoner.story.message, style);
+    //text = game.add.text(0, 0, "asdgh", style);
     text.anchor.set(0.5);
     text.x = Math.floor(ChildPicked.x + ChildPicked.width / 2);//overlap works but now undefined here
     text.y = Math.floor(ChildPicked.y + ChildPicked.height / 2) - 50;
@@ -358,12 +398,13 @@ GameStateHandler.Preloader.prototype = {
         this.load.image('camera', 'Camera.png');
         this.load.tilemap('map', 'GameMap.json', null, Phaser.Tilemap.TILED_JSON); //Loding the map with tiles
         this.game.load.atlas('Prisoner', 'PTest.png', 'PTest.json');
+
+        prisonerStoryList = new StoryList();
   },
   create: function() {
     console.log('Preloader: create');
     //Preventing the key to affect browser view
-    game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT,
-    Phaser.Keyboard.UP, Phaser.Keyboard.DOWN, Phaser.Keyboard.SPACEBAR]);
+    game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT, Phaser.Keyboard.UP, Phaser.Keyboard.DOWN, Phaser.Keyboard.SPACEBAR]);
   },
   update: function() {
     this.state.start('Play');
@@ -393,10 +434,16 @@ GameStateHandler.Play.prototype = {
         //creating prisoner(s)
         prisoners = game.add.group();
         prisoners.enableBody = true;
-        for(var i = 0; i < 7; i++){
+        /*for(var i = 0; i < 7; i++){
             getRandomCoordinates();
             new Prisoner(randomX, randomY, prisoners);//testing making multiple prisoners
-        }
+        }*/
+        new Prisoner(250, 115, prisoners);
+        new Prisoner(80, 475, prisoners);
+        new Prisoner(1100, 465, prisoners);
+        new Prisoner(1385, 110, prisoners);
+        new Prisoner(1935, 140, prisoners);
+        new Prisoner(1950, 480, prisoners);
         testCamera = new CameraEnemy(600, 95)
         //text style for text popups
         style = {
@@ -418,7 +465,7 @@ GameStateHandler.Play.prototype = {
         map.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
         
         game.input.addMoveCallback(function(pointer, x, y){
-            if(player.body.velocity.x != 0 || player.body.velocity.y != 0) player.pointTo(x + game.camera.x, y + game.camera.y);
+            if(player.sprite.body.velocity.x == 0 && player.sprite.body.velocity.y == 0) player.pointTo(x + game.camera.x, y + game.camera.y);
         }, game);
 
         cursors = game.input.keyboard.createCursorKeys();
@@ -434,10 +481,6 @@ GameStateHandler.Play.prototype = {
 
         doLights([player, testCamera]);
 
-        if(testCamera.light.visible(player)){
-            console.log("I SEE YOU");
-        }
-
         //shadowObj.update(player.sprite, cursors);
     
         if (cursors.left.isDown || cursors.right.isDown || cursors.up.isDown || cursors.down.isDown){
@@ -446,7 +489,7 @@ GameStateHandler.Play.prototype = {
         player.update(cursors);
    }
 };
-
+var spcbar;
 game.state.add('Preloader', GameStateHandler.Preloader);
 game.state.add('Play', GameStateHandler.Play);
 game.state.start('Preloader');
