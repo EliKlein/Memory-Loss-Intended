@@ -316,6 +316,9 @@ class CameraEnemy{
             this.sprite.angle += this.state;
             if(this.sprite.angle < this.arcStart || this.sprite.angle > this.arcEnd) this.state = 0;
         }
+        if(this.light.visible(player)){
+            console.log("seen by camera");
+        }
     }
     pointTo(x,y){
         this.sprite.angle = directionTo(this, x, y);
