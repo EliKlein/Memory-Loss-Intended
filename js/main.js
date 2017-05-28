@@ -2,7 +2,6 @@ var GameStateHandler = {};
 var game = new Phaser.Game(1024, 576, Phaser.AUTO);
 var map;
 var walls;
-var shadowObj;
 var lightTexture;
 var lightSprite;
 var buttonpressed;
@@ -10,9 +9,9 @@ var text;
 var style;
 var hintStyle;
 var prisoners;
-var prisonerArray = [];
+var prisonerArray;
 var enemiesGroup;
-var enemiesArray = [];
+var enemiesArray;
 var testCamera;
 var player;
 var PLAYER_SPEED = 150;
@@ -39,8 +38,6 @@ class Player{
         player.body.collideWorldBounds = true;
         player.animations.add('moving', Phaser.Animation.generateFrameNames('survivor-move_flashlight_', 0, 19), 60, true);
         this.sprite = player;
-        player.body.onCollide = new Phaser.Signal();//might want to move this to prisoner class
-        player.body.onCollide.add(showText, this);
     }
     update(cursors) {
         
@@ -215,6 +212,9 @@ class Prisoner{
         game.world.remove(this.buttonA);
         game.world.remove(this.buttonD);
         this.accepted = true;
+        if(!this.story.truth){
+            game.state.start("GameOver");
+        }
     }
     deny(){
         this.stopText();
@@ -231,9 +231,8 @@ class Prisoner{
 }
 class Guard{
     constructor(x, y){
-        this.name = "g"+enemiesArray.length;
         this.sprite = enemiesGroup.create(x, y, 'guard');
-        this.sprite.anchor.set(0.5)
+        this.sprite.anchor.set(0.5);
         this.dir = 0;
         game.physics.arcade.enable(this.sprite);
         this.sprite.body.collideWorldBounds = true;
@@ -242,7 +241,6 @@ class Guard{
         this.sprite.animations.add('movingleft', Phaser.Animation.generateFrameNames('sprite', 5, 7), 5, true);
         this.sprite.animations.add('movingright', Phaser.Animation.generateFrameNames('sprite', 9, 11), 5, true);
         this.sprite.animations.add('movingup', Phaser.Animation.generateFrameNames('sprite', 13, 15), 5, true);
-        enemiesGroup.add(this.sprite);
         enemiesArray.push(this);
 
         this.light = new LightSource(this, 225, 50);
@@ -482,17 +480,6 @@ function getWallIntersection(walls, ray) {
     
 }
 
-function showText(player, prisoner){
-    //var selected = Phaser.ArrayUtils.getRandomItem(prisonerArray, 0, prisonerArray.length-1);//picks random prisoner to speak
-    findContainingObject(prisoner, prisonerArray).showText();
-    /*for(var i = 0; i < prisonerArray.length; i++){
-        if(prisonerArray[i].sprite === prisoner){
-            prisonerArray[i].showText();
-            break;
-        }
-    }*/
-}
-
 function getRandomCoordinates(){            
     var randX = Math.floor((Math.random() * game.world.width) + 1);            
     var randY = Math.floor((Math.random() * game.world.height) + 1);            
@@ -505,6 +492,12 @@ function getRandomCoordinates(){
     }        
 }
 
+function showText(player, prisoner){
+    console.log(prisoners);
+    console.log(enemiesGroup);
+    findContainingObject(prisoner, prisonerArray).showText();
+}
+
 function changeAnimation(enemySprite, wall){
     var enemy = findContainingObject(enemySprite, enemiesArray);
 
@@ -513,9 +506,12 @@ function changeAnimation(enemySprite, wall){
     else if(enemySprite.animations.currentAnim.name == "movingright") enemy.left();
     else enemy.right();
 }
-function stopAnimation(enemySprite, player){
+
+function stopAnimation(player, enemySprite){
+    //console.log(enemySprite.body.velocity);
     enemySprite.body.velocity.x = 0;
     enemySprite.body.velocity.y = 0;
+    //console.log(enemySprite.body.velocity);
     enemySprite.animations.stop();
     if(enemySprite.animations.currentAnim.name == "movingdown") enemySprite.frame = 0;
     if(enemySprite.animations.currentAnim.name == "movingup") enemySprite.frame = 12;
@@ -540,17 +536,75 @@ GameStateHandler.Preloader.prototype = {
         this.load.image('camera', 'Camera.png');
         this.load.tilemap('map', 'GameMap.json', null, Phaser.Tilemap.TILED_JSON); //Loding the map with tiles
         this.load.atlas('Prisoner', 'PTest.png', 'PTest.json');
+        this.load.image('Menu_Background', 'Menu_Background.png');
+        this.load.image('button', 'grey_button.png');
 
         prisonerStoryList = new StoryList();
-  },
-  create: function() {
-    console.log('Preloader: create');
-    //Preventing the key to affect browser view
-    game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT, Phaser.Keyboard.UP, Phaser.Keyboard.DOWN, Phaser.Keyboard.SPACEBAR]);
-  },
-  update: function() {
-    this.state.start('Play');
- }
+    },
+    create: function() {
+        console.log('Preloader: create');
+        //Preventing the key to affect browser view
+        game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT, Phaser.Keyboard.UP, Phaser.Keyboard.DOWN, Phaser.Keyboard.SPACEBAR]);
+    },
+    update: function() {
+        this.state.start('Menu');
+    }
+};
+GameStateHandler.Menu = function() {
+    var button_play, button_options, textplay, textopt;
+};
+GameStateHandler.Menu.prototype = {
+    preload: function() {},
+    create: function() {
+        var Menu_backGround = this.add.image(0,0, 'Menu_Background');
+        Menu_backGround.alpha = 0.35;
+        button_play = game.add.button(game.world.centerX - 95, 200, 'button', this.actionOnClickplay, this);
+        textplay = game.add.text(button_play.centerX - 25, button_play.centerY - 12, 'PLAY', {fontSize: '20px', fill: 'black'});
+        button_options = game.add.button(game.world.centerX - 95, 250, 'button', this.actionOnClickopt, this);
+        textopt = game.add.text(button_options.centerX - 45, button_options.centerY - 12, 'OPTIONS', {fontSize: '20px', fill: 'black'});
+
+    },
+    update: function() {
+        if(button_play.input.pointerOver()) {
+            textplay.fill = 'green';
+        } else {
+            textplay.fill = 'black';
+        }
+        if(button_options.input.pointerOver()) {
+            textopt.fill = 'green';
+        } else {
+            textopt.fill = 'black';
+        }
+    },
+    actionOnClickplay: function() {
+        this.state.start('Play');
+    },
+    actionOnClickopt: function() {
+        this.state.start('Options_Screen');
+    }
+};
+
+GameStateHandler.Options_Screen = function() {
+    var button_back, text_back;
+};
+GameStateHandler.Options_Screen.prototype = {
+    create: function() {
+        var Menu_backGround = this.add.image(0,0, 'Menu_Background');
+        Menu_backGround.alpha = 0.35;
+        button_back = game.add.button(game.world.centerX - 95, 200, 'button', this.actionOnClickback, this);
+        text_back = game.add.text(button_play.centerX - 28, button_play.centerY - 12, 'BACK', {fontSize: '20px', fill: 'black'});
+        game.add.text(425, 100, 'Game Description', {fontSize: '20px', fill: 'white'});
+    },
+    update: function() {
+        if(button_back.input.pointerOver()) {
+            text_back.fill = 'green';
+        } else {
+            text_back.fill = 'black';
+        }
+    },
+    actionOnClickback: function() {
+        this.state.start('Menu');
+    }
 };
 GameStateHandler.Play = function() {
 };
@@ -573,8 +627,12 @@ GameStateHandler.Play.prototype = {
             }
         }
 
+        enemiesArray = [];
+        prisonerArray = [];
+
         //creating guards
         enemiesGroup = game.add.group();
+        enemiesGroup.enableBody = true;
         new Guard(740, 265).down();
         new Guard(1110, 260).down();
         new Guard(1210, 290).right();
@@ -615,17 +673,15 @@ GameStateHandler.Play.prototype = {
     update: function() {
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, testCamera.sprite);
-        game.physics.arcade.collide(player.sprite, prisoners);
-        game.physics.arcade.collide(enemiesGroup, groundLayer, changeAnimation); //ADDED
-        game.physics.arcade.collide(enemiesGroup, player, stopAnimation); //ADDED
-        //testCamera.pointTo(player.sprite.x, player.sprite.y);
+        game.physics.arcade.collide(player.sprite, prisoners, showText);
+        game.physics.arcade.collide(enemiesGroup, groundLayer, changeAnimation);
+        game.physics.arcade.collide(player.sprite, enemiesGroup, stopAnimation);
+
         testCamera.update();
 
         lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
 
         doLights([player, testCamera]);
-
-        //shadowObj.update(player.sprite, cursors);
         
         for(var i = 0; i < enemiesArray.length; i++){
             enemiesArray[i].update();
@@ -639,7 +695,8 @@ GameStateHandler.Play.prototype = {
         player.update(cursors);
    }
 };
-var spcbar;
 game.state.add('Preloader', GameStateHandler.Preloader);
+game.state.add('Menu', GameStateHandler.Menu);
+game.state.add('Options_Screen', GameStateHandler.Options_Screen);
 game.state.add('Play', GameStateHandler.Play);
 game.state.start('Preloader');
