@@ -18,6 +18,8 @@ var PLAYER_SPEED = 150;
 var randomX;
 var randomY;
 var prisonerStoryList;
+var gameOverTip = "";
+var enterKey;
 
 function findContainingObject(sprite, array){
     for(var i = 0; i < array.length; i++){
@@ -95,11 +97,11 @@ class Player{
 }
 
 class Story{
-    constructor(message, truth, hint){
+    constructor(message, truth, hint, gameOverMessage){
         this.message = message;
         this.truth = truth;
         this.hint = hint;
-        
+        this.GOM = gameOverMessage;
     }
 }
 
@@ -107,7 +109,7 @@ class StoryList{
     constructor(){
         //setting global variable in a place where it makes sense, and near where it matters
         style = {
-            font: "16px Ariel",
+            font: "16px Helvetica",
             strokeThickness:1.5,
             wordWrap: true,
             wordWrapWidth: 275,
@@ -119,41 +121,49 @@ class StoryList{
             font: "12px Times New Roman",
             wordWrap: true,
             wordWrapWidth: 400,
-            fill:"#000966",
+            fill:"#DDDDDD",
             stroke:"rgba(255,255,255,0.25)",
-            backgroundColor: "#808080"
+            backgroundColor: "#102940"
         };
-
-        this.list = [];
-        this.reset();
     }
     reset(){
+        this.list = [];
         this.list.push(new Story("I clicked on an interesting link on Facebook that a friend of mine posted. It gave my computer a virus. " +
-        "It turns out their profile was hacked.", false,
-        "-They describe that it was 'The 5 Most Interesting Things on the Internet'\n" +
-        "-They show that they are friends with someone who has posted some suspicious things.")); //"www.facebook/link1356#1445/5-Most-interesting-things-on-Internet")); // I don't know if we should have an actual link to a supposed virus
+                                "It turns out their profile was hacked.", false,
+                                "-They describe that it was 'The 5 Most Interesting Things on the Internet'\n" +
+                                "-They show that they are friends with someone who has posted some suspicious things.",
+                                "Does it actually confim their story to see that they can tell you the kind of title you'd see on facebook, or that they have a suspicious friend?\n" +
+                                "Most anyone could think of a fake title, and their suspicious friend is probably just what inspired them to make up the story. " +
+                                "Try to trust people who have things that are much harder to fabricate before you trust someone like this!")); //"www.facebook/link1356#1445/5-Most-interesting-things-on-Internet")); // I don't know if we should have an actual link to a supposed virus
         this.list.push(new Story("I got a call from the IRS. They asked me to give them my personal information. I verified the caller ID " +
-        "online and it was actually their number. I guess my caller ID was compromised.", false,
-        "-The number is actually from the IRS.\n" +
-        "-They tell me the address they gave to the scammer. It's a real house."));
+                                "online and it was actually their number. I guess my caller ID was compromised.", false,
+                                "-The number is actually from the IRS.\n" +
+                                "-They tell me the address they gave to the scammer. It's a real house.",
+                                "Does it actually confirm their story to find that they know the IRS's phone number, or that they know an address?\n" +
+                                "Anyone can look up the IRS's phone number online, and anyone can find a random house in a similar fashion. " +
+                                "Try to trust people who have things that are much harder to fabricate before you trust someone like this!"));
         this.list.push(new Story("I bought NBA playoff tickets off CraigList. The guy told me he was unable to attend becuase he was " +
-        "assigned overtime all of a sudden that day. The tickets looked real but didn't scan. The contact information he provided was bogus", true,
-        "-I see the tickets in their hand, and they look real.\n" +
-        "-I called the number they provided, and it was disconnected."));
+                                "assigned overtime all of the sudden that day. The tickets looked real but didn't scan. The contact information he provided was bogus", true,
+                                "-I see the tickets in their hand, and they look real.\n" +
+                                "-I called the number they provided, and it was disconnected.",
+                                "This is not supposed to have led you to a game over. Sorry, it's a bug."));
         this.list.push(new Story("I met a girl online. We wanted to meet but she said she did not have the money, " +
-        "so I wired it to her. I never heard from her again.", true,
-        "-The fake girl's dating website profile, and another profile by the same name on Facebook, were deleted shortly after the incident.\n" +
-        "-They show me a bank statement on the bank's website, with the wire transfer on it."));
+                                "so I wired it to her. I never heard from her again.", true,
+                                "-The fake girl's dating website profile, and another profile by the same name on Facebook, were deleted shortly after the incident.\n" +
+                                "-They show me a bank statement on the bank's website, with the wire transfer on it.",
+                                "This is not supposed to have led you to a game over. Sorry, it's a bug."));
         this.list.push(new Story("I got a call in the middle of the day saying that my friend was kidnapped. " +
-        "I tried to negotiate a price because I was scared for him. I wired them money, but later I found out " +
-        "my friend was not in any sort of trouble.", true,
-        "-They describe their friends visual appearance appropriately, and when I call them, they confirm the story.\n" +
-        "-They show the bank statement showing the details of the transaction, on the bank's website."));
+                                "I tried to negotiate a price because I was scared for him. I wired them money, but later I found out " +
+                                "my friend was not in any sort of trouble.", true,
+                                "-They describe their friends visual appearance appropriately, and when I call them, they confirm the story.\n" +
+                                "-They show the bank statement showing the details of the transaction, on the bank's website.",
+                                "This is not supposed to have led you to a game over. Sorry, it's a bug."));
         this.list.push(new Story("I was told that I could make a lot of money working for a company if I paid an entry fee. " +
-        "The only job I would need to do was recruit more people. In the end, it was just a pyramid scheme.", true,
-        "-The scamming company has its website fully developed. This person has a page on that website.\n" +
-        "-They have contact info for all the people they recruited before they dropped out because it was a scam. I picked a few random " + 
-        "people on the list, and they all relayed similar stories and had pages on the website."));
+                                "The only job I would need to do was recruit more people. In the end, it was just a pyramid scheme.", true,
+                                "-The company has a full website. This person has a page on that website.\n" +
+                                "-There's contact info for everyone they recruited before dropping out. I contacted some of them at random. " + 
+                                "They relayed similar stories, and provided their name when asked.",
+                                "This is not supposed to have led you to a game over. Sorry, it's a bug."));
     }
     getRandom(){
         return this.list.splice(Math.floor(Math.random()*this.list.length), 1)[0];
@@ -163,61 +173,114 @@ class StoryList{
 class Prisoner{
     constructor(x, y) {
         this.sprite = prisoners.create(x, y, 'Prisoner');
-        this.sprite.anchor.set(0.5);
+        this.sprite.anchor.setTo(0.5, 0.5);
         this.sprite.body.immovable = true;
         this.story = prisonerStoryList.getRandom();
         //scale to match player better
-        this.sprite.scale.setTo(0.27);
+        this.sprite.scale.setTo(0.45);
+        this.roundCornerRadius = 7;
         prisonerArray.push(this);
     }
     makeText(){
+        this.background = game.add.graphics(0,0);
+
         this.text = game.add.text(0, 0, this.story.message, style);
-        this.text.anchor.setTo(0.5, 1);
-        this.hint = game.add.text(this.text.x + (this.text.width/2), this.text.y, this.story.hint, hintStyle);
-        this.hint.anchor.setTo(0, 1);
+        this.text.anchor.setTo(1, 1);
+        
+        this.hint = game.add.text(0, 0, this.story.hint, hintStyle);
+        this.hint.anchor.setTo(1, 1);
+
+        this.background.width = this.text.width + this.hint.width + (this.roundCornerRadius*4);
+        this.background.height = Math.max(this.text.height, this.hint.height) + this.roundCornerRadius*2;
+        
         this.buttonA = game.add.button(0, 0, "accept", this.accept, this, 0, 1, 2);
         this.buttonD = game.add.button(0, 0, "deny", this.deny, this, 0, 1, 2);
         this.buttonD.anchor.setTo(1, 0);
+
+        this.background.width = this.text.width + this.hint.width + 4*this.roundCornerRadius;
+
+        this.text.x = Math.floor(Math.min(Math.max(this.sprite.x + (this.text.width/2), this.roundCornerRadius + this.text.width), game.world.width - this.roundCornerRadius));
+        this.text.y = Math.floor(Math.min(Math.max(this.sprite.y - this.sprite.height - this.buttonA.height - this.roundCornerRadius - 15, this.text.height + this.roundCornerRadius), game.world.height - this.buttonA.height - this.roundCornerRadius));
+
+        this.hint.x = this.text.x + this.hint.width + (this.roundCornerRadius*2);
+        this.hint.y = this.text.y;
+        
+        //place hint box on the left if it doesn't fit on the right
+        if(this.hint.x + this.roundCornerRadius > game.world.width){
+            this.hint.x = this.text.x - this.text.width - (this.roundCornerRadius*2);
+        }
+
         this.stopText();
     }
     showText(){
         if(!this.accepted){
+            this.background.reset();
             this.text.reset();
             this.hint.reset();
             this.buttonA.reset();
             this.buttonD.reset();
-            this.text.x = Math.min(Math.max(Math.floor(this.sprite.x), this.text.width/2), game.world.width - (this.text.width/2));
-            this.text.y = Math.min(Math.max(Math.floor(this.sprite.y - this.sprite.height - 10), this.text.height), game.world.height - this.buttonA.height);
-            this.hint.x = this.text.x + (this.text.width/2);
+
+            this.text.x = Math.floor(Math.min(Math.max(this.sprite.x + (this.text.width/2), this.roundCornerRadius + this.text.width), game.world.width - this.roundCornerRadius));
+            this.text.y = Math.floor(Math.min(Math.max(this.sprite.y - this.sprite.height - this.buttonA.height - this.roundCornerRadius - 15, this.text.height + this.roundCornerRadius), game.world.height - this.buttonA.height - this.roundCornerRadius));
+
+            this.hint.x = this.text.x + this.hint.width + (this.roundCornerRadius*2);
             this.hint.y = this.text.y;
-            if(this.hint.x + this.hint.width > game.world.width){
-                this.hint.x = this.text.x - (this.text.width/2);
-                this.hint.anchor.setTo(1,1);
+            if(this.hint.x + this.roundCornerRadius > game.world.width){
+                this.hint.x = this.text.x - this.text.width - (this.roundCornerRadius*2);
             }
-            this.buttonA.x = this.text.x - (this.text.width/2);
-            this.buttonD.x = this.text.x + (this.text.width/2);
-            this.buttonA.y = this.text.y;
-            this.buttonD.y = this.text.y;
+
+            this.background.x = Math.min(this.text.x - this.text.width, this.hint.x - this.hint.width) - this.roundCornerRadius;
+            this.background.y = Math.min(this.text.y - this.text.height, this.hint.y - this.hint.height) - this.roundCornerRadius;
+
+            this.background.clear();
+            //rect around text box
+            this.background.beginFill(0x88AACC);
+            this.background.drawRoundedRect(Math.max(0, (this.text.x - this.text.width) - (this.hint.x - this.hint.width)), Math.max(0, this.hint.height - this.text.height),
+                this.text.width + (this.roundCornerRadius*2),
+                this.text.height + (this.roundCornerRadius*2),
+                this.roundCornerRadius);
+            this.background.endFill();
+
+            //rect around hint box
+            this.background.beginFill(0x102940);
+            this.background.drawRoundedRect(Math.max(0, (this.hint.x - this.hint.width) - (this.text.x - this.text.width)), Math.max(0, this.text.height - this.hint.height),
+                this.hint.width + (this.roundCornerRadius*2),
+                this.hint.height + (this.roundCornerRadius*2),
+                this.roundCornerRadius);
+            this.background.endFill();
+
+            this.buttonA.x = this.text.x - this.text.width;
+            this.buttonD.x = this.text.x;
+            this.buttonA.y = this.text.y + this.roundCornerRadius;
+            this.buttonD.y = this.text.y + this.roundCornerRadius;
         }
     }
     stopText(){
+        this.background.kill();
         this.text.kill();
         this.hint.kill();
         this.buttonA.kill();
         this.buttonD.kill();
     }
     accept(){
+        game.world.remove(this.background);
         game.world.remove(this.text);
         game.world.remove(this.hint);
         game.world.remove(this.buttonA);
         game.world.remove(this.buttonD);
         this.accepted = true;
         if(!this.story.truth){
+            gameOverTip = this.story.GOM;
             game.state.start("GameOver");
         }
     }
     deny(){
         this.stopText();
+    }
+    followPlayer(){
+        if(this.accepted){
+            game.physics.arcade.moveToXY(this.sprite, player.getX(), player.getY());
+        }
     }
     getX(){
         return this.sprite.x;
@@ -232,21 +295,21 @@ class Prisoner{
 class Guard{
     constructor(x, y){
         this.sprite = enemiesGroup.create(x, y, 'guard');
-        this.sprite.anchor.set(0.5);
+        this.sprite.anchor.setTo(0.5, 0.5);
         this.dir = 0;
         game.physics.arcade.enable(this.sprite);
         this.sprite.body.collideWorldBounds = true;
         this.sprite.body.immovable = true;
-        this.sprite.animations.add('movingdown', Phaser.Animation.generateFrameNames('sprite', 0, 3), 5, true);
-        this.sprite.animations.add('movingleft', Phaser.Animation.generateFrameNames('sprite', 5, 7), 5, true);
-        this.sprite.animations.add('movingright', Phaser.Animation.generateFrameNames('sprite', 9, 11), 5, true);
-        this.sprite.animations.add('movingup', Phaser.Animation.generateFrameNames('sprite', 13, 15), 5, true);
+        this.sprite.animations.add('movingdown', Phaser.Animation.generateFrameNames('down', 1, 4), 5, true);
+        this.sprite.animations.add('movingleft', Phaser.Animation.generateFrameNames('left', 1, 4), 5, true);
+        this.sprite.animations.add('movingright', Phaser.Animation.generateFrameNames('right', 1, 4), 5, true);
+        this.sprite.animations.add('movingup', Phaser.Animation.generateFrameNames('up', 1, 4), 5, true);
         enemiesArray.push(this);
 
         this.light = new LightSource(this, 225, 50);
 
         this.psSprite = game.add.sprite(0, 0, "seen");
-        this.psSprite.anchor.set(0.5);
+        this.psSprite.anchor.setTo(0.5, 0.5);
         this.psSprite.scale.setTo(0.5, 0.5);
         this.psSprite.kill();
     }
@@ -294,7 +357,7 @@ class CameraEnemy{
     constructor(xSpawn, ySpawn, arcStart, arcEnd){
         this.light = new LightSource(this, 225, 40);
         this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
-        this.sprite.anchor.set(0.5);
+        this.sprite.anchor.setTo(0.5, 0.5);
         this.direction = this.sprite.angle;
         this.state = (arcEnd - arcStart)/120;
         this.arcStart = arcStart;
@@ -384,7 +447,7 @@ class LightSource{
         var tX = target.getX();
         var tY = target.getY();
 
-        if(Math.sqrt((sX-tX)*(sX-tX)+(sY-tY)*(sY-tY)) > this.strength) return false;
+        if(distance(sX, sY, tX, tY) > this.strength) return false;
 
         var angleDiff;
         if(sX == tX){
@@ -454,6 +517,9 @@ function directionTo(source, x, y){
         if(source.getX() > x) return d + 180;
         return d;
 }
+function distance(x1, y1, x2, y2){
+    return Math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
+}
 
 function getWallIntersection(walls, ray) {
     var distanceToWall = Number.POSITIVE_INFINITY;
@@ -468,8 +534,8 @@ function getWallIntersection(walls, ray) {
             
             if (intersect) {
                 // Find the closest intersection
-                distance = this.game.math.distance(ray.start.x, ray.start.y, intersect.x, intersect.y);
-                if (distance < distanceToWall) {
+                dist = distance(ray.start.x, ray.start.y, intersect.x, intersect.y);
+                if (dist < distanceToWall) {
                     distanceToWall = distance;
                     closestIntersection = intersect;
                 }
@@ -540,7 +606,9 @@ GameStateHandler.Preloader.prototype = {
     create: function() {
         console.log('Preloader: create');
         //Preventing the key to affect browser view
-        game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT, Phaser.Keyboard.UP, Phaser.Keyboard.DOWN, Phaser.Keyboard.SPACEBAR]);
+        game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT, Phaser.Keyboard.UP, Phaser.Keyboard.DOWN,
+                                           Phaser.Keyboard.SPACEBAR, Phaser.Keyboard.ENTER,
+                                           Phaser.Keyboard.W, Phaser.Keyboard.A, Phaser.Keyboard.S, Phaser.Keyboard.D]);
     },
     update: function() {
         this.state.start('Menu');
@@ -608,6 +676,7 @@ GameStateHandler.Play.prototype = {
     preload: function() {
         console.log('Play: preload');
         game.load.image('tiles', 'Tiles.png'); //loading tileset image
+        prisonerStoryList.reset();
     },
     create: function() {
         console.log('Play: create');
@@ -665,6 +734,7 @@ GameStateHandler.Play.prototype = {
         }, game);
 
         cursors = game.input.keyboard.createCursorKeys();
+        enterKey = game.input.keyboard.addKey(Phaser.Keyboard.ENTER);
     },
     update: function() {
         game.physics.arcade.collide(player.sprite, groundLayer);
@@ -681,6 +751,12 @@ GameStateHandler.Play.prototype = {
         
         for(var i = 0; i < enemiesArray.length; i++){
             enemiesArray[i].update();
+        }
+
+        if(enterKey.justPressed()){
+            for(var i = 0; i < prisonerArray.length; i++){
+                prisonerArray[i].followPlayer();
+            }
         }
 
         if (cursors.left.isDown || cursors.right.isDown || cursors.up.isDown || cursors.down.isDown){
