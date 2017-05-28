@@ -82,55 +82,6 @@ GameStateHandler.Play.prototype = {
     wordWrapWidth: 300, align: "center", backgroundColor: "white" };
 
 
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    //ADDED
-    enemiesGroup = game.add.group();
-
-    var enemies = game.add.sprite(game.camera.width / 2 + 230, game.camera.height / 2 - 25, 'guards');
-    enemies.frame = 0;
-    game.physics.arcade.enable(enemies);
-    enemies.body.collideWorldBounds = true;
-    enemies.body.immovable = true;
-    enemies.animations.add('movingdown', Phaser.Animation.generateFrameNames('sprite', 0, 3), 5, true);
-    enemies.animations.add('movingup', Phaser.Animation.generateFrameNames('sprite', 13, 15), 5, true);
-    enemiesGroup.add(enemies);
-    enemies.animations.play('movingdown');
-    enemies.body.velocity.y += 60;
-
-    var enemies2 = game.add.sprite(game.camera.width / 2 + 600, game.camera.height / 2 - 25, 'guards');
-    enemies2.frame = 0;
-    game.physics.arcade.enable(enemies2);
-    enemies2.body.collideWorldBounds = true;
-    enemies2.body.immovable = true;
-    enemies2.animations.add('movingdown', Phaser.Animation.generateFrameNames('sprite', 0, 3), 5, true);
-    enemies2.animations.add('movingup', Phaser.Animation.generateFrameNames('sprite', 13, 15), 5, true);
-    enemiesGroup.add(enemies2);
-    enemies2.animations.play('movingdown');
-    enemies2.body.velocity.y += 60;
-
-    var enemies3 = game.add.sprite(game.camera.width / 2 + 700, game.camera.height / 2, 'guards');
-    enemies3.frame = 10;
-    game.physics.arcade.enable(enemies3);
-    enemies3.body.collideWorldBounds = true;
-    enemies3.body.immovable = true;
-    enemies3.animations.add('movingleft', Phaser.Animation.generateFrameNames('sprite', 5, 7), 5, true);
-    enemies3.animations.add('movingright', Phaser.Animation.generateFrameNames('sprite', 9, 11), 5, true);
-    enemiesGroup.add(enemies3);
-    enemies3.animations.play('movingright');
-    enemies3.body.velocity.x += 60;
-
-    var enemies4 = game.add.sprite(game.camera.width / 2 - 340, game.camera.height / 2 - 30, 'guards');
-    enemies4.frame = 8;
-    game.physics.arcade.enable(enemies4);
-    enemies4.body.collideWorldBounds = true;
-    enemies4.body.immovable = true;
-    enemies4.animations.add('movingleft', Phaser.Animation.generateFrameNames('sprite', 5, 7), 5, true);
-    enemies4.animations.add('movingright', Phaser.Animation.generateFrameNames('sprite', 9, 11), 5, true);
-    enemiesGroup.add(enemies4);
-    enemies4.animations.play('movingleft');
-    enemies4.body.velocity.x -= 60;
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
     /*
     shadowTexture = game.add.bitmapData(game.width, game.height);
