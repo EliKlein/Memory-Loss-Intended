@@ -173,21 +173,51 @@ class Prisoner{
         this.sprite.scale.setTo(0.27);
         prisonerArray.push(this);
     }
-    showText(){
+    makeText(){
         this.text = game.add.text(0, 0, this.story.message, style);
-        this.text.anchor.setTo(0.5,1);
-        this.text.x = Math.min(Math.max(Math.floor(this.sprite.x), this.text.width/2), game.width - (this.text.width/2));
-        this.text.y = Math.min(Math.max(Math.floor(this.sprite.y - this.sprite.height - 10), this.text.height), game.height);
+        this.text.anchor.setTo(0.5, 1);
         this.hint = game.add.text(this.text.x + (this.text.width/2), this.text.y, this.story.hint, hintStyle);
-        this.hint.anchor.setTo(0,1);
-        if(this.hint.x + this.hint.width > game.width){
-            this.hint.x = this.text.x - (this.text.width/2);
-            this.hint.anchor.setTo(1,1);
+        this.hint.anchor.setTo(0, 1);
+        this.buttonA = game.add.button(0, 0, "accept", this.accept, this, 0, 1, 2);
+        this.buttonD = game.add.button(0, 0, "deny", this.deny, this, 0, 1, 2);
+        this.buttonD.anchor.setTo(1, 0);
+        this.stopText();
+    }
+    showText(){
+        if(!this.accepted){
+            this.text.reset();
+            this.hint.reset();
+            this.buttonA.reset();
+            this.buttonD.reset();
+            this.text.x = Math.min(Math.max(Math.floor(this.sprite.x), this.text.width/2), game.world.width - (this.text.width/2));
+            this.text.y = Math.min(Math.max(Math.floor(this.sprite.y - this.sprite.height - 10), this.text.height), game.world.height - this.buttonA.height);
+            this.hint.x = this.text.x + (this.text.width/2);
+            this.hint.y = this.text.y;
+            if(this.hint.x + this.hint.width > game.world.width){
+                this.hint.x = this.text.x - (this.text.width/2);
+                this.hint.anchor.setTo(1,1);
+            }
+            this.buttonA.x = this.text.x - (this.text.width/2);
+            this.buttonD.x = this.text.x + (this.text.width/2);
+            this.buttonA.y = this.text.y;
+            this.buttonD.y = this.text.y;
         }
     }
     stopText(){
+        this.text.kill();
+        this.hint.kill();
+        this.buttonA.kill();
+        this.buttonD.kill();
+    }
+    accept(){
         game.world.remove(this.text);
         game.world.remove(this.hint);
+        game.world.remove(this.buttonA);
+        game.world.remove(this.buttonD);
+        this.accepted = true;
+    }
+    deny(){
+        this.stopText();
     }
     getX(){
         return this.sprite.x;
@@ -500,6 +530,8 @@ GameStateHandler.Preloader.prototype = {
         this.load.image('Background', 'FloorBackgroundBigger.png');
         this.load.image('prisoner', 'prisoner1.png');
         this.load.image('seen', 'Seen.png');
+        this.load.spritesheet('accept', 'acceptBtn.png', 125, 50);
+        this.load.spritesheet('deny', 'denyBtn.png', 125, 50);
         this.load.atlas('player', 'atlas.png', 'atlas.json');
         this.load.atlas('guard', 'guard.png', 'guards.json');
         this.load.image('camera', 'Camera.png');
@@ -566,6 +598,10 @@ GameStateHandler.Play.prototype = {
         groundLayer = map.createLayer('TileLayer'); //creating a layer
         groundLayer.resizeWorld();
         map.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
+
+        for(var i = 0; i < prisonerArray.length; i++){
+            prisonerArray[i].makeText();
+        }
         
         game.input.addMoveCallback(function(pointer, x, y){
             if(player.sprite.body.velocity.x == 0 && player.sprite.body.velocity.y == 0) player.pointTo(x + game.camera.x, y + game.camera.y);
