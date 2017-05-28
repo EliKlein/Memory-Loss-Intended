@@ -315,7 +315,7 @@ class CameraEnemy{
             if(this.sprite.angle < this.arcStart || this.sprite.angle > this.arcEnd) this.state = 0;
         }
         if(this.light.visible(player)){
-            console.log("seen by camera");
+            //console.log("seen by camera");
         }
     }
     pointTo(x,y){
@@ -493,8 +493,6 @@ function getRandomCoordinates(){
 }
 
 function showText(player, prisoner){
-    console.log(prisoners);
-    console.log(enemiesGroup);
     findContainingObject(prisoner, prisonerArray).showText();
 }
 
@@ -508,10 +506,8 @@ function changeAnimation(enemySprite, wall){
 }
 
 function stopAnimation(player, enemySprite){
-    //console.log(enemySprite.body.velocity);
     enemySprite.body.velocity.x = 0;
     enemySprite.body.velocity.y = 0;
-    //console.log(enemySprite.body.velocity);
     enemySprite.animations.stop();
     if(enemySprite.animations.currentAnim.name == "movingdown") enemySprite.frame = 0;
     if(enemySprite.animations.currentAnim.name == "movingup") enemySprite.frame = 12;
