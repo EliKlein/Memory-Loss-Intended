@@ -30,7 +30,7 @@ function findContainingObject(sprite, array){
 
 class Player{
     constructor(x, y){
-        this.light = new LightSource(this, 225, 55);
+        this.light = new LightSource(this, 225, 55, 60);
         //Creating the player sprite
         var player = game.add.sprite(x, y, 'player');
         //Setting up the sprite as a physical body in Arcade Physics Engine
@@ -306,7 +306,7 @@ class Guard{
         this.sprite.animations.add('movingup', Phaser.Animation.generateFrameNames('up', 1, 4), 5, true);
         enemiesArray.push(this);
 
-        this.light = new LightSource(this, 225, 50);
+        this.light = new LightSource(this, 225, 50, 10);
 
         this.psSprite = game.add.sprite(0, 0, "seen");
         this.psSprite.anchor.setTo(0.5, 0.5);
@@ -355,7 +355,7 @@ class Guard{
 }
 class CameraEnemy{
     constructor(xSpawn, ySpawn, arcStart, arcEnd){
-        this.light = new LightSource(this, 225, 40);
+        this.light = new LightSource(this, 225, 40, 20);
         this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
         this.sprite.anchor.setTo(0.5, 0.5);
         this.direction = this.sprite.angle;
@@ -396,10 +396,11 @@ class CameraEnemy{
 }
 
 class LightSource{
-    constructor(emittingObj, lightStrength, spread){
+    constructor(emittingObj, lightStrength, spread, resolution){
         this.source = emittingObj;
         this.arcWidth = spread;
-        this.strength = lightStrength
+        this.strength = lightStrength;
+        this.resolution = resolution;
     }
     draw(){
         //prototype I guess
@@ -412,7 +413,7 @@ class LightSource{
         var startAngle = this.source.getAngle() - (this.arcWidth/2);
         var endAngle = startAngle + this.arcWidth;
 
-        for(var currentAngle = startAngle; currentAngle <= endAngle; currentAngle += this.arcWidth / 30){
+        for(var currentAngle = startAngle; currentAngle <= endAngle; currentAngle += this.arcWidth / this.resolution){
             var currentLine = new Phaser.Line(sX, sY, sX + Math.cos(currentAngle*Math.PI/180)*this.strength, sY + Math.sin(currentAngle*Math.PI/180)*this.strength);
             var currentInt = getWallIntersection(walls, currentLine);
             if(currentInt){
@@ -581,6 +582,19 @@ function stopAnimation(player, enemySprite){
     if(enemySprite.animations.currentAnim.name == "movingright") enemySprite.frame = 9;
 }
 
+function stageComplete(){
+    var numAccountedFor = 0;
+    for(var i = 0; i < prisonerArray.length; i++){
+        if(!prisonerArray[i].story.truth || prisonerArray[i].accepted){
+            numAccountedFor++;
+            if(!prisonerArray[i].story.truth && prisonerArray[i].accepted){
+                return false;
+            }
+        }
+    }
+    return numAccountedFor == prisonerArray.length;
+}
+
 GameStateHandler.Preloader = function() {};
 GameStateHandler.Preloader.prototype = {
     preload: function() {
@@ -600,6 +614,7 @@ GameStateHandler.Preloader.prototype = {
         this.load.atlas('Prisoner', 'PTest.png', 'PTest.json');
         this.load.image('Menu_Background', 'Menu_Background.png');
         this.load.image('button', 'grey_button.png');
+        this.load.bitmapFont('font_game', "font_game.png", "font_game.fnt")
 
         prisonerStoryList = new StoryList();
     },
@@ -622,10 +637,14 @@ GameStateHandler.Menu.prototype = {
     create: function() {
         var Menu_backGround = this.add.image(0,0, 'Menu_Background');
         Menu_backGround.alpha = 0.35;
-        button_play = game.add.button(game.world.centerX - 95, 200, 'button', this.actionOnClickplay, this);
-        textplay = game.add.text(button_play.centerX - 25, button_play.centerY - 12, 'PLAY', {fontSize: '20px', fill: 'black'});
-        button_options = game.add.button(game.world.centerX - 95, 250, 'button', this.actionOnClickopt, this);
-        textopt = game.add.text(button_options.centerX - 45, button_options.centerY - 12, 'OPTIONS', {fontSize: '20px', fill: 'black'});
+        button_play = game.add.button(game.width/2, 200, 'button', this.actionOnClickplay, this);
+        button_play.anchor.setTo(0.5, 0.5);
+        textplay = game.add.text(button_play.x, button_play.y, 'PLAY', {fontSize: '20px', fill: 'black'});
+        textplay.anchor.setTo(0.5, 0.5);
+        button_options = game.add.button(game.width/2, 250, 'button', this.actionOnClickopt, this);
+        button_options.anchor.setTo(0.5, 0.5);
+        textopt = game.add.text(button_options.x, button_options.y, 'OPTIONS', {fontSize: '20px', fill: 'black'});
+        textopt.anchor.setTo(0.5, 0.5);
 
     },
     update: function() {
@@ -655,9 +674,11 @@ GameStateHandler.Options_Screen.prototype = {
     create: function() {
         var Menu_backGround = this.add.image(0,0, 'Menu_Background');
         Menu_backGround.alpha = 0.35;
-        button_back = game.add.button(game.world.centerX - 95, 200, 'button', this.actionOnClickback, this);
-        text_back = game.add.text(button_play.centerX - 28, button_play.centerY - 12, 'BACK', {fontSize: '20px', fill: 'black'});
-        game.add.text(425, 100, 'Game Description', {fontSize: '20px', fill: 'white'});
+        button_back = game.add.button(game.width/2, game.height - 100, 'button', this.actionOnClickback, this);
+        button_back.anchor.setTo(0.5, 0.5);
+        text_back = game.add.text(button_back.x, button_back.y, 'BACK', {fontSize: '20px', fill: 'black'});
+        text_back.anchor.setTo(0.5, 0.5);
+        game.add.text(game.width/2, 100, 'Game Description', {fontSize: '20px', fill: 'white'}).anchor.setTo(0.5, 0.5);;
     },
     update: function() {
         if(button_back.input.pointerOver()) {
@@ -737,6 +758,12 @@ GameStateHandler.Play.prototype = {
         enterKey = game.input.keyboard.addKey(Phaser.Keyboard.ENTER);
     },
     update: function() {
+        if(stageComplete()){
+            console.log("congrats!");
+            gameOverTip = "We don't have a win screen or a stage 2 so you get this instead."
+            game.state.start("GameOver");
+        }
+
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, testCamera.sprite);
         game.physics.arcade.collide(player.sprite, prisoners, showText);
@@ -767,8 +794,61 @@ GameStateHandler.Play.prototype = {
         player.update(cursors);
    }
 };
+function wordWrapBitmapText(text, size, wrapWidth){
+    if(text.length == 0){
+        return text;
+    }
+    var maxChars = Math.floor(wrapWidth / size);
+    var subs = text.split(" ");
+    for(var i = 0; i < subs.length; i++){
+        if(subs[i].length > maxChars){
+            subs.splice(i, 1, subs[i].substr(0, maxChars), subs[i].substr(maxChars));
+        }
+    }
+    var ret = "";
+    var lineLength = subs[0].length;
+    ret += subs[0];
+    for(var i = 1; i < subs.length; i++){
+        if(lineLength + subs[i].length > maxChars){
+            ret += "\n";
+            lineLength = subs[i].length + 1;
+        } else {
+            ret += " ";
+            lineLength += subs[i].length + 1;
+        }
+        ret += subs[i];
+    }
+    return ret;
+}
+GameStateHandler.GameOver = function() {
+    var button_restart, text_restart;
+};
+GameStateHandler.GameOver.prototype = {
+    create: function() {
+        var menu_background = this.add.image(0,0, 'Menu_Background');
+        menu_background.alpha = 0.35;
+        button_restart = game.add.button(game.width/2, 200, 'button', this.actionOnClickrestart, this);
+        button_restart.anchor.setTo(0.5, 0.5);
+        text_restart = game.add.bitmapText(button_restart.x, button_restart.y, 'font_game', 'PLAY AGAIN', 20);
+        text_restart.anchor.setTo(0.5, 0.5);
+        
+        gameOverTip = wordWrapBitmapText(gameOverTip, 10, 550);
+        game.add.bitmapText(game.width/2, 100, 'font_game', gameOverTip, 20).anchor.setTo(0.5, 0.5);
+    },
+    update: function() {
+        if(button_restart.input.pointerOver()) {
+            text_restart.fill = 'green';
+        } else {
+            text_restart.fill = 'black';
+        }
+    },
+    actionOnClickrestart: function() {
+        this.state.start('Menu');
+    }
+};
 game.state.add('Preloader', GameStateHandler.Preloader);
 game.state.add('Menu', GameStateHandler.Menu);
 game.state.add('Options_Screen', GameStateHandler.Options_Screen);
 game.state.add('Play', GameStateHandler.Play);
+game.state.add('GameOver', GameStateHandler.GameOver);
 game.state.start('Preloader');
