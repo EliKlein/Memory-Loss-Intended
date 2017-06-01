@@ -19,7 +19,7 @@ var randomX;
 var randomY;
 var prisonerStoryList;
 var gameOverTip = "";
-var enterKey;
+var enterKey, spacebarKey;
 
 function findContainingObject(sprite, array){
     for(var i = 0; i < array.length; i++){
@@ -182,6 +182,8 @@ class Prisoner{
         prisonerArray.push(this);
     }
     makeText(){
+        this.TEMPTHING = game.add.graphics();
+
         this.background = game.add.graphics(0,0);
 
         this.text = game.add.text(0, 0, this.story.message, style);
@@ -279,7 +281,18 @@ class Prisoner{
     }
     followPlayer(){
         if(this.accepted){
-            game.physics.arcade.moveToXY(this.sprite, player.getX(), player.getY());
+            //game.physics.arcade.moveToXY(this.sprite, player.getX(), player.getY());
+        }
+        var path = findPath(this.sprite.x, this.sprite.y, player.sprite.x, player.sprite.y, map);
+        if(path){
+            this.TEMPTHING.reset();
+            this.TEMPTHING.clear();
+            this.TEMPTHING.beginFill(0xFFFFFF);
+            for(var i = 0; i < path.length; i++){
+                this.TEMPTHING.drawCircle(16+path[i].x*32, 16+path[i].y*32, 13);
+            }
+        } else {
+            this.TEMPTHING.kill();
         }
     }
     getX(){
@@ -563,6 +576,101 @@ function showText(player, prisoner){
     findContainingObject(prisoner, prisonerArray).showText();
 }
 
+function findPath(worldSX, worldSY, worldEX, worldEY, map){
+    var start = worldPosToTilePos(worldSX, worldSY, map);
+    start.gScore = 0;
+    start.from = {x:start.x, y:start.y};
+
+    var end = worldPosToTilePos(worldEX, worldEY, map);
+
+    var explored = [];
+    for(var i = 0; i < map.height; i++){
+        explored.push([]);
+        for(var j = 0; j < map.width; j++){
+            explored[i].push(null);
+        }
+    }
+    var exploring = [start];
+    var curr, from, adj;
+    while(exploring.length > 0){
+        curr = exploring.shift();
+        explored[curr.y][curr.x] = {x:curr.from.x, y:curr.from.y};
+        if(curr.x == end.x && curr.y == end.y){
+            var path = [explored[end.y][end.x]];
+            //I know this is really unclear, but I like how it fits in one line
+            while(path[0].x != start.x || path[0].y != start.y) path.unshift(explored[path[0].y][path[0].x]);
+            path.shift();
+            return path;
+        }
+        adj = adjacentTiles(curr, map, explored);
+        for(var i = 0; i < adj.length; i++){
+            var insert = true;
+            for(var j = 0; j < exploring.length; j++){
+                if(exploring[j].x == adj[i].x && exploring[j].y == adj[i].y){
+                    insert = adj[i].gScore < exploring[j].gScore;
+                    if(insert){
+                        exploring.splice(j, 1);
+                    }
+                    break;
+                }
+            }
+            if(insert){
+                adj[i].from = {x:curr.x, y:curr.y};
+                adj[i].fScore = Math.abs(end.x - adj[i].x) + Math.abs(end.y - adj[i].y) + adj[i].gScore;
+                for(var j = 0; j <= exploring.length; j++){
+                    if(j == exploring.length){
+                        exploring.push(adj[i]);
+                        break;
+                    }
+                    if(exploring[j].fScore > adj[i].fScore){
+                        exploring.splice(j, 0, adj[i]);
+                        break
+                    }
+                }
+            }
+        }
+    }
+    return null;
+}
+
+function adjacentTiles(tile, map, explored){
+    var ret = [];
+    //make sure each adjacent tile is within the bounds of the map, not a wall, and hasn't been explored, before adding it to return values
+    if(tile.x + 1 < map.width && map.getTile(tile.x+1, tile.y) == null && explored[tile.y][tile.x+1] == null)
+        ret.push({gScore:tile.gScore+1, x:tile.x+1, y:tile.y});
+    if(tile.y + 1 < map.height && map.getTile(tile.x, tile.y+1) == null && explored[tile.y+1][tile.x] == null)
+        ret.push({gScore:tile.gScore+1, x:tile.x, y:tile.y+1});
+    if(tile.x - 1 >= 0 && map.getTile(tile.x-1, tile.y) == null && explored[tile.y][tile.x-1] == null)
+        ret.push({gScore:tile.gScore+1, x:tile.x-1, y:tile.y});
+    if(tile.y - 1 >= 0 && map.getTile(tile.x, tile.y-1) == null && explored[tile.y-1][tile.x] == null)
+        ret.push({gScore:tile.gScore+1, x:tile.x, y:tile.y-1});
+    /*//for diagonal tiles, also make sure that at least one of the tiles adjacent in the correct direction is open, so there's a clear path to take through
+    if(tile.x - 1 >= 0 && tile.y - 1 >=0 && map.getTile(tile.x-1, tile.y-1) == null && (map.getTile(tile.x-1, tile.y) == null || map.getTile(tile.x, tile.y-1) == null) && explored[tile.y-1][tile.x-1] == null)
+        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x-1, y:tile.y-1});
+    if(tile.x - 1 >= 0 && tile.y + 1 < map.height && map.getTile(tile.x-1, tile.y+1) == null && (map.getTile(tile.x-1, tile.y) == null || map.getTile(tile.x, tile.y+1) == null) && explored[tile.y+1][tile.x-1] == null)
+        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x-1, y:tile.y+1});
+    if(tile.x + 1 < map.width && tile.y - 1 >=0 && map.getTile(tile.x+1, tile.y-1) == null && (map.getTile(tile.x+1, tile.y) == null || map.getTile(tile.x, tile.y-1) == null) && explored[tile.y-1][tile.x+1] == null)
+        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x+1, y:tile.y-1});
+    if(tile.x + 1 < map.width && tile.y + 1 < map.height && map.getTile(tile.x+1, tile.y+1) == null && (map.getTile(tile.x+1, tile.y) == null || map.getTile(tile.x, tile.y+1) == null) && explored[tile.y+1][tile.x+1] == null)
+        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x+1, y:tile.y+1});*/
+    
+    //I don't think we actually need to check the thing I mention above... just make sure to design maps without gaps like that
+    if(tile.x - 1 >= 0 && tile.y - 1 >=0 && map.getTile(tile.x-1, tile.y-1) == null && explored[tile.y-1][tile.x-1] == null)
+        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x-1, y:tile.y-1});
+    if(tile.x - 1 >= 0 && tile.y + 1 < map.height && map.getTile(tile.x-1, tile.y+1) == null && explored[tile.y+1][tile.x-1] == null)
+        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x-1, y:tile.y+1});
+    if(tile.x + 1 < map.width && tile.y - 1 >=0 && map.getTile(tile.x+1, tile.y-1) == null && explored[tile.y-1][tile.x+1] == null)
+        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x+1, y:tile.y-1});
+    if(tile.x + 1 < map.width && tile.y + 1 < map.height && map.getTile(tile.x+1, tile.y+1) == null && explored[tile.y+1][tile.x+1] == null)
+        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x+1, y:tile.y+1});
+    return ret;
+}
+
+function worldPosToTilePos(worldX, worldY, map){
+    //needs work
+    return {x:Math.floor(worldX / 32), y:Math.floor(worldY / 32)}
+}
+
 function changeAnimation(enemySprite, wall){
     var enemy = findContainingObject(enemySprite, enemiesArray);
 
@@ -756,6 +864,7 @@ GameStateHandler.Play.prototype = {
 
         cursors = game.input.keyboard.createCursorKeys();
         enterKey = game.input.keyboard.addKey(Phaser.Keyboard.ENTER);
+        spacebarKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
     },
     update: function() {
         if(stageComplete()){
@@ -783,6 +892,12 @@ GameStateHandler.Play.prototype = {
         if(enterKey.justPressed()){
             for(var i = 0; i < prisonerArray.length; i++){
                 prisonerArray[i].followPlayer();
+            }
+        }
+
+        if(spacebarKey.justPressed()){
+            for(var i = 0; i < prisonerArray.length; i++){
+                prisonerArray[i].TEMPTHING.kill();
             }
         }
 
