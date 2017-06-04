@@ -325,6 +325,12 @@ class Guard{
     update(){
         if(this.light.visible(player)){
             this.psSprite.reset(this.sprite.x, this.sprite.y-40);
+            //console.log("seen by guard");
+            game.seen.play('', 0, 0.5, false,false);
+            timeCheck = game.time.now;
+            if (game.time.now - timeCheck > 1000){
+                game.alert.play('', 0, 0.5, false, false);
+            }
         } else this.psSprite.kill();
     }
     down(){
