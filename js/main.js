@@ -421,7 +421,7 @@ class LightSource{
 
         for(var currentAngle = startAngle; currentAngle <= endAngle; currentAngle += this.arcWidth / this.resolution){
             var currentLine = new Phaser.Line(sX, sY, sX + Math.cos(currentAngle*Math.PI/180)*this.strength, sY + Math.sin(currentAngle*Math.PI/180)*this.strength);
-            var currentInt = getWallIntersection(map, currentLine);
+            var currentInt = getWallIntersection(currentLine);
             if(currentInt){
                 points.push({x:currentInt.x, y:currentInt.y});
             }else{
@@ -472,7 +472,7 @@ class LightSource{
             starboardAng = correctAngle(starboardAng);
         }
         if(angleDiff < portAng || angleDiff > starboardAng) return false;
-        var intersect = getWallIntersection(map, new Phaser.Line(sX, sY, tX, tY));
+        var intersect = getWallIntersection(new Phaser.Line(sX, sY, tX, tY));
         if(intersect)return false;
         return true;
     }
