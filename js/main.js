@@ -21,6 +21,7 @@ var randomY;
 var prisonerStoryList;
 var gameOverTip = "";
 var enterKey, spacebarKey;
+var steps;
 
 function findContainingObject(sprite, array){
     for(var i = 0; i < array.length; i++){
@@ -70,8 +71,10 @@ class Player{
             }
         }
         if (this.sprite.body.velocity.x == 0 && this.sprite.body.velocity.y == 0) {
+            steps.stop();
             this.sprite.animations.stop();
         } else {
+            steps.play('', 0.25, 0.75, false, false);//plays stepping sounds
             this.sprite.angle = Math.atan(this.sprite.body.velocity.y / this.sprite.body.velocity.x) * 180 / Math.PI;
             if (this.sprite.body.velocity.x < 0) this.sprite.angle += 180;
         }
@@ -723,6 +726,7 @@ GameStateHandler.Preloader.prototype = {
         this.load.image('Menu_Background', 'Menu_Background.png');
         this.load.image('button', 'grey_button.png');
         this.load.bitmapFont('font_game', "font_game.png", "font_game.fnt")
+        this.load.audio('steps',['steps.ogg']);
 
         prisonerStoryList = new StoryList();
     },
@@ -853,6 +857,7 @@ GameStateHandler.Play.prototype = {
         console.log('Play: preload');
         game.load.image('tiles', 'Tiles.png'); //loading tileset image
         prisonerStoryList.reset();
+        steps = game.add.audio('steps');
     },
     create: function() {
         console.log('Play: create');
@@ -899,7 +904,7 @@ GameStateHandler.Play.prototype = {
         map.addTilesetImage('Tiles', 'tiles');
         groundLayer = map.createLayer('TileLayer'); //creating a layer
         groundLayer.resizeWorld();
-        map.setCollisionBetween(0, 10000, true, groundLayer); //enabling collision for tiles used
+        map.setCollisionByExclusion([],true, groundLayer); // the old way of doing 
 
         for(var i = 0; i < prisonerArray.length; i++){
             prisonerArray[i].makeText();
