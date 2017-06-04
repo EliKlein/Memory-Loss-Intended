@@ -130,21 +130,24 @@ class StoryList{
         this.list.push(new Story("I clicked on an interesting link on Facebook that a friend of mine posted. It gave my computer a virus. " +
                                 "It turns out their profile was hacked.", false,
                                 "-They describe that it was 'The 5 Most Interesting Things on the Internet'\n" +
-                                "-They show that they are friends with someone who has posted some suspicious things.",
-                                "Does it actually confim their story to see that they can tell you the kind of title you'd see on facebook, or that they have a suspicious friend?\n" +
-                                "Most anyone could think of a fake title, and their suspicious friend is probably just what inspired them to make up the story. " +
+                                "-They tell you that the virus erased all of the files on their hard drive.",
+                                "Look for information that really verifies the story someone tells you. Most anyone could think of a fake " +
+                                "title, and they only even *told* you that their hard drive was erased. If either was true, they'd be able " +
+                                "to show you a screwed-up hard drive and probably a real link to a virus from their profile. " +
                                 "Try to trust people who have things that are much harder to fabricate before you trust someone like this!")); //"www.facebook/link1356#1445/5-Most-interesting-things-on-Internet")); // I don't know if we should have an actual link to a supposed virus
         this.list.push(new Story("I got a call from the IRS. They asked me to give them my personal information. I verified the caller ID " +
-                                "online and it was actually their number. I guess my caller ID was compromised.", false,
+                                "online and it was actually their number. They must have found a way around my caller ID, since it didn't turn " + 
+                                "out they were really the IRS.", false,
                                 "-The number is actually from the IRS.\n" +
                                 "-They tell me the address they gave to the scammer. It's a real house.",
-                                "Does it actually confirm their story to find that they know the IRS's phone number, or that they know an address?\n" +
+                                "Does it actually confirm their story to find that they know the IRS's phone number, or that they know an address of a house?\n" +
                                 "Anyone can look up the IRS's phone number online, and anyone can find a random house in a similar fashion. " +
                                 "Try to trust people who have things that are much harder to fabricate before you trust someone like this!"));
         this.list.push(new Story("I bought NBA playoff tickets off CraigList. The guy told me he was unable to attend becuase he was " +
                                 "assigned overtime all of the sudden that day. The tickets looked real but didn't scan. The contact information he provided was bogus", true,
                                 "-I see the tickets in their hand, and they look real.\n" +
-                                "-I called the number they provided, and it was disconnected.",
+                                "-I called the number they provided, and it was disconnected. I verified with the a phone company that it has been disconnected since around " +
+                                "the correct time.",
                                 "This is not supposed to have led you to a game over. Sorry, it's a bug."));
         this.list.push(new Story("I met a girl online. We wanted to meet but she said she did not have the money, " +
                                 "so I wired it to her. I never heard from her again.", true,
@@ -960,13 +963,13 @@ GameStateHandler.GameOver.prototype = {
     create: function() {
         var menu_background = this.add.image(0,0, 'Menu_Background');
         menu_background.alpha = 0.35;
-        button_restart = game.add.button(game.width/2, 200, 'button', this.actionOnClickrestart, this);
+        button_restart = game.add.button(game.width/2, game.height - 60, 'button', this.actionOnClickrestart, this);
         button_restart.anchor.setTo(0.5, 0.5);
         text_restart = game.add.bitmapText(button_restart.x, button_restart.y, 'font_game', 'PLAY AGAIN', 20);
         text_restart.anchor.setTo(0.5, 0.5);
         
         gameOverTip = wordWrapBitmapText(gameOverTip, 10, 550);
-        game.add.bitmapText(game.width/2, 100, 'font_game', gameOverTip, 20).anchor.setTo(0.5, 0.5);
+        game.add.bitmapText(game.width/2, 100, 'font_game', gameOverTip, 20).anchor.setTo(0.5, 0);
     },
     update: function() {
         if(button_restart.input.pointerOver()) {
