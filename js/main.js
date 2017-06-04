@@ -10,6 +10,7 @@ var style;
 var hintStyle;
 var prisoners;
 var prisonerArray;
+var names = ["Prisoner"];
 var enemiesGroup;
 var enemiesArray;
 var testCamera;
@@ -30,7 +31,7 @@ function findContainingObject(sprite, array){
 
 class Player{
     constructor(x, y){
-        this.light = new LightSource(this, 225, 55, 60);
+        this.light = new LightSource(this, 225, 55, 26);
         //Creating the player sprite
         var player = game.add.sprite(x, y, 'player');
         //Setting up the sprite as a physical body in Arcade Physics Engine
@@ -112,18 +113,16 @@ class StoryList{
             font: "16px Helvetica",
             strokeThickness:1.5,
             wordWrap: true,
-            wordWrapWidth: 275,
-            fill:"#1144CC",
-            stroke:"rgba(80,60,20,0.4)",
-            backgroundColor: "#88AACC"
+            wordWrapWidth: 300,
+            fill:"rgba(17, 68, 294, 0.9)",
+            stroke:"rgba(80,60,20,0.35)",
         };
         hintStyle = {
             font: "12px Times New Roman",
             wordWrap: true,
-            wordWrapWidth: 400,
-            fill:"#DDDDDD",
-            stroke:"rgba(255,255,255,0.25)",
-            backgroundColor: "#102940"
+            wordWrapWidth: 300,
+            fill:"rgba(220, 220, 220, 0.9)",
+            stroke:"rgba(255,255,255,0.2)",
         };
     }
     reset(){
@@ -176,6 +175,7 @@ class Prisoner{
         this.sprite.anchor.setTo(0.5, 0.5);
         this.sprite.body.immovable = true;
         this.story = prisonerStoryList.getRandom();
+        this.name = names[Math.floor(Math.random()*names.length)]
         //scale to match player better
         this.sprite.scale.setTo(0.45);
         this.roundCornerRadius = 7;
@@ -184,33 +184,22 @@ class Prisoner{
     makeText(){
         this.TEMPTHING = game.add.graphics();
 
-        this.background = game.add.graphics(0,0);
+        this.background = game.add.graphics();
 
         this.text = game.add.text(0, 0, this.story.message, style);
         this.text.anchor.setTo(1, 1);
         
-        this.hint = game.add.text(0, 0, this.story.hint, hintStyle);
+        this.hint = game.add.text(0, 0, "Hint:\n" + this.story.hint, hintStyle);
         this.hint.anchor.setTo(1, 1);
-
-        this.background.width = this.text.width + this.hint.width + (this.roundCornerRadius*4);
-        this.background.height = Math.max(this.text.height, this.hint.height) + this.roundCornerRadius*2;
         
         this.buttonA = game.add.button(0, 0, "accept", this.accept, this, 0, 1, 2);
         this.buttonD = game.add.button(0, 0, "deny", this.deny, this, 0, 1, 2);
         this.buttonD.anchor.setTo(1, 0);
+        this.buttonA.alpha = 0.9;
+        this.buttonD.alpha = 0.9;
 
         this.background.width = this.text.width + this.hint.width + 4*this.roundCornerRadius;
-
-        this.text.x = Math.floor(Math.min(Math.max(this.sprite.x + (this.text.width/2), this.roundCornerRadius + this.text.width), game.world.width - this.roundCornerRadius));
-        this.text.y = Math.floor(Math.min(Math.max(this.sprite.y - this.sprite.height - this.buttonA.height - this.roundCornerRadius - 15, this.text.height + this.roundCornerRadius), game.world.height - this.buttonA.height - this.roundCornerRadius));
-
-        this.hint.x = this.text.x + this.hint.width + (this.roundCornerRadius*2);
-        this.hint.y = this.text.y;
-        
-        //place hint box on the left if it doesn't fit on the right
-        if(this.hint.x + this.roundCornerRadius > game.world.width){
-            this.hint.x = this.text.x - this.text.width - (this.roundCornerRadius*2);
-        }
+        this.background.alpha = 0.9;
 
         this.stopText();
     }
@@ -227,7 +216,8 @@ class Prisoner{
 
             this.hint.x = this.text.x + this.hint.width + (this.roundCornerRadius*2);
             this.hint.y = this.text.y;
-            if(this.hint.x + this.roundCornerRadius > game.world.width){
+            //place hint box on the left if it doesn't fit on the right
+            if(this.hint.x + this.roundCornerRadius > game.width + game.camera.x){
                 this.hint.x = this.text.x - this.text.width - (this.roundCornerRadius*2);
             }
 
@@ -319,7 +309,7 @@ class Guard{
         this.sprite.animations.add('movingup', Phaser.Animation.generateFrameNames('up', 1, 4), 5, true);
         enemiesArray.push(this);
 
-        this.light = new LightSource(this, 225, 50, 10);
+        this.light = new LightSource(this, 225, 50, 8);
 
         this.psSprite = game.add.sprite(0, 0, "seen");
         this.psSprite.anchor.setTo(0.5, 0.5);
@@ -368,7 +358,7 @@ class Guard{
 }
 class CameraEnemy{
     constructor(xSpawn, ySpawn, arcStart, arcEnd){
-        this.light = new LightSource(this, 225, 40, 20);
+        this.light = new LightSource(this, 225, 40, 8);
         this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
         this.sprite.anchor.setTo(0.5, 0.5);
         this.direction = this.sprite.angle;
@@ -419,16 +409,19 @@ class LightSource{
         //prototype I guess
         var sX = this.source.getX();
         var sY = this.source.getY();
-        var handLength = (this.source.sprite.width + this.source.sprite.height)/4;
+        var handLength = (this.source.sprite.width + this.source.sprite.height)/5;
         sX += Math.cos(this.source.getAngle()*Math.PI/180)*handLength;
         sY += Math.sin(this.source.getAngle()*Math.PI/180)*handLength;
+
+        if(map.getTile(Math.floor(sX/32), Math.floor(sY/32))) return;
+
         var points = [];
         var startAngle = this.source.getAngle() - (this.arcWidth/2);
         var endAngle = startAngle + this.arcWidth;
 
         for(var currentAngle = startAngle; currentAngle <= endAngle; currentAngle += this.arcWidth / this.resolution){
             var currentLine = new Phaser.Line(sX, sY, sX + Math.cos(currentAngle*Math.PI/180)*this.strength, sY + Math.sin(currentAngle*Math.PI/180)*this.strength);
-            var currentInt = getWallIntersection(walls, currentLine);
+            var currentInt = getWallIntersection(map, currentLine);
             if(currentInt){
                 points.push({x:currentInt.x, y:currentInt.y});
             }else{
@@ -436,11 +429,11 @@ class LightSource{
             }
         }
         var g = lightTexture.context.createRadialGradient(sX, sY, this.strength * 0.5, sX, sY, this.strength);
-        g.addColorStop(0, 'rgba(255,255,255,1.0)');
-        g.addColorStop(1, 'rgba(255,255,255,0.0)');
-        lightTexture.context.beginPath();
+        g.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+        g.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
         lightTexture.context.fillStyle = g;
-        lightTexture.context.strokeStyle = 'rgba(255,255,255,0.0)'
+        
+        lightTexture.context.beginPath();
         lightTexture.context.moveTo(sX, sY);
         for(var i = 0; i < points.length; i++){
             lightTexture.context.lineTo(points[i].x, points[i].y);
@@ -479,14 +472,15 @@ class LightSource{
             starboardAng = correctAngle(starboardAng);
         }
         if(angleDiff < portAng || angleDiff > starboardAng) return false;
-        var intersect = getWallIntersection(walls, new Phaser.Line(sX, sY, tX, tY));
+        var intersect = getWallIntersection(map, new Phaser.Line(sX, sY, tX, tY));
         if(intersect)return false;
         return true;
     }
 }
 
 function doLights(objectsWithLights){
-    lightTexture.context.fillStyle = "rgba(0,0,0, 0.8)";
+    lightTexture.context.fillStyle = "rgba(0, 0, 0, 0.85)";
+    lightTexture.context.strokeStyle = 'rgba(255, 255, 255, 0.0)'
     lightTexture.context.fillRect(game.camera.x, game.camera.y, game.width, game.height);
     for(var i = 0; i < objectsWithLights.length; i++){
         objectsWithLights[i].light.draw();
@@ -535,23 +529,36 @@ function distance(x1, y1, x2, y2){
     return Math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
 }
 
-function getWallIntersection(walls, ray) {
+function getWallIntersection(ray) {
     var distanceToWall = Number.POSITIVE_INFINITY;
     var closestIntersection = null;
-    for (var i = 0; i < walls.length; i++) {
-        var lines = walls[i].getLines();
-        
-        //Test each of the edges in this wall against the ray.
-        //If the ray intersects any of the edges then the wall must be in the way.
-        for (var j = 0; j < lines.length; j++) {
-            var intersect = Phaser.Line.intersects(ray, lines[j]);
-            
-            if (intersect) {
-                // Find the closest intersection
-                dist = distance(ray.start.x, ray.start.y, intersect.x, intersect.y);
+    //vertical lines
+    var loopEnds = {x:Math.ceil(Math.max(ray.start.x, ray.end.x) / 32), y:Math.ceil(Math.max(ray.start.y, ray.end.y) / 32)};
+    if(ray.end.x - ray.start.x != 0){
+        var slope = (ray.end.y - ray.start.y) / (ray.end.x - ray.start.x);
+        for (var i = Math.ceil(Math.min(ray.start.x, ray.end.x) / 32); i < loopEnds.x; i++) {
+            var intersectY = slope * ((i*32) - ray.start.x) + ray.start.y;
+            var yTile = Math.floor(intersectY / 32);
+            if (intersectY >= 0 && yTile < map.height && (map.getTile(i, yTile) != null || map.getTile(Math.max(i-1, 0), yTile) != null)) {
+                dist = distance(ray.start.x, ray.start.y, i*32, intersectY);
                 if (dist < distanceToWall) {
-                    distanceToWall = distance;
-                    closestIntersection = intersect;
+                    distanceToWall = dist;
+                    closestIntersection = {x:i*32, y:intersectY};
+                }
+            }
+        }
+    }
+    //horizontal lines
+    if(ray.end.y - ray.start.y != 0){
+        var slope = (ray.end.x - ray.start.x) / (ray.end.y - ray.start.y);
+        for (var i = Math.ceil(Math.min(ray.start.y, ray.end.y) / 32); i < loopEnds.y; i++) {
+            var intersectX = slope * ((i*32) - ray.start.y) + ray.start.x;
+            var xTile = Math.floor(intersectX / 32);
+            if (intersectX >= 0 && xTile < map.width && (map.getTile(xTile, i) != null || map.getTile(xTile, Math.max(i-1, 0)) != null)) {
+                dist = distance(ray.start.x, ray.start.y,  intersectX, i*32);
+                if (dist < distanceToWall) {
+                    distanceToWall = dist;
+                    closestIntersection = {x:intersectX, y:i*32};
                 }
             }
         }
@@ -644,17 +651,7 @@ function adjacentTiles(tile, map, explored){
         ret.push({gScore:tile.gScore+1, x:tile.x-1, y:tile.y});
     if(tile.y - 1 >= 0 && map.getTile(tile.x, tile.y-1) == null && explored[tile.y-1][tile.x] == null)
         ret.push({gScore:tile.gScore+1, x:tile.x, y:tile.y-1});
-    /*//for diagonal tiles, also make sure that at least one of the tiles adjacent in the correct direction is open, so there's a clear path to take through
-    if(tile.x - 1 >= 0 && tile.y - 1 >=0 && map.getTile(tile.x-1, tile.y-1) == null && (map.getTile(tile.x-1, tile.y) == null || map.getTile(tile.x, tile.y-1) == null) && explored[tile.y-1][tile.x-1] == null)
-        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x-1, y:tile.y-1});
-    if(tile.x - 1 >= 0 && tile.y + 1 < map.height && map.getTile(tile.x-1, tile.y+1) == null && (map.getTile(tile.x-1, tile.y) == null || map.getTile(tile.x, tile.y+1) == null) && explored[tile.y+1][tile.x-1] == null)
-        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x-1, y:tile.y+1});
-    if(tile.x + 1 < map.width && tile.y - 1 >=0 && map.getTile(tile.x+1, tile.y-1) == null && (map.getTile(tile.x+1, tile.y) == null || map.getTile(tile.x, tile.y-1) == null) && explored[tile.y-1][tile.x+1] == null)
-        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x+1, y:tile.y-1});
-    if(tile.x + 1 < map.width && tile.y + 1 < map.height && map.getTile(tile.x+1, tile.y+1) == null && (map.getTile(tile.x+1, tile.y) == null || map.getTile(tile.x, tile.y+1) == null) && explored[tile.y+1][tile.x+1] == null)
-        ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x+1, y:tile.y+1});*/
-    
-    //I don't think we actually need to check the thing I mention above... just make sure to design maps without gaps like that
+    //diagonals
     if(tile.x - 1 >= 0 && tile.y - 1 >=0 && map.getTile(tile.x-1, tile.y-1) == null && explored[tile.y-1][tile.x-1] == null)
         ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x-1, y:tile.y-1});
     if(tile.x - 1 >= 0 && tile.y + 1 < map.height && map.getTile(tile.x-1, tile.y+1) == null && explored[tile.y+1][tile.x-1] == null)
@@ -667,7 +664,7 @@ function adjacentTiles(tile, map, explored){
 }
 
 function worldPosToTilePos(worldX, worldY, map){
-    //needs work
+    //needs work (get actual tile width/height from the object instead of just knowing it's 32)
     return {x:Math.floor(worldX / 32), y:Math.floor(worldY / 32)}
 }
 
@@ -737,6 +734,43 @@ GameStateHandler.Preloader.prototype = {
         this.state.start('Menu');
     }
 };
+
+
+function wordWrapBitmapText(text, size, wrapWidth){
+    if(text.length == 0){
+        return text;
+    }
+    var maxChars = Math.floor(wrapWidth / size);
+    var subs = text.split("\n");
+    var ret = "";
+    if(subs.length > 1){
+        for(var i = 0; i < subs.length; i++){
+            ret += wordWrapBitmapText(subs[i], size, wrapWidth);
+            ret += "\n";
+        }
+        return ret;
+    }
+    subs = text.split(" ");
+    for(var i = 0; i < subs.length; i++){
+        if(subs[i].length > maxChars){
+            subs.splice(i, 1, subs[i].substr(0, maxChars), subs[i].substr(maxChars));
+        }
+    }
+    var lineLength = subs[0].length;
+    ret += subs[0];
+    for(var i = 1; i < subs.length; i++){
+        if(lineLength + subs[i].length > maxChars){
+            ret += "\n";
+            lineLength = subs[i].length + 1;
+        } else {
+            ret += " ";
+            lineLength += subs[i].length + 1;
+        }
+        ret += subs[i];
+    }
+    return ret;
+}
+
 GameStateHandler.Menu = function() {
     var button_play, button_options, textplay, textopt;
 };
@@ -747,11 +781,11 @@ GameStateHandler.Menu.prototype = {
         Menu_backGround.alpha = 0.35;
         button_play = game.add.button(game.width/2, 200, 'button', this.actionOnClickplay, this);
         button_play.anchor.setTo(0.5, 0.5);
-        textplay = game.add.text(button_play.x, button_play.y, 'PLAY', {fontSize: '20px', fill: 'black'});
+        textplay = game.add.bitmapText(button_play.x, button_play.y, "font_game", 'PLAY', 20);
         textplay.anchor.setTo(0.5, 0.5);
-        button_options = game.add.button(game.width/2, 250, 'button', this.actionOnClickopt, this);
+        button_options = game.add.button(game.width/2, 250, 'button',  this.actionOnClickopt, this);
         button_options.anchor.setTo(0.5, 0.5);
-        textopt = game.add.text(button_options.x, button_options.y, 'OPTIONS', {fontSize: '20px', fill: 'black'});
+        textopt = game.add.bitmapText(button_options.x, button_options.y, "font_game", 'HELP', 20);
         textopt.anchor.setTo(0.5, 0.5);
 
     },
@@ -776,28 +810,38 @@ GameStateHandler.Menu.prototype = {
 };
 
 GameStateHandler.Options_Screen = function() {
-    var button_back, text_back;
+  var button_back, text_back, game_description, game_controls;
 };
 GameStateHandler.Options_Screen.prototype = {
     create: function() {
         var Menu_backGround = this.add.image(0,0, 'Menu_Background');
         Menu_backGround.alpha = 0.35;
-        button_back = game.add.button(game.width/2, game.height - 100, 'button', this.actionOnClickback, this);
+        game_controls = "Controls:\n\tUse the ARROW KEYS to move.\n\tWhile standing still, use the MOUSE to aim your flashlight.\n\t" +
+                        "Walk into prisoners to talk to them.\n\tAfter a prisoner or two is with you, press ENTER to call them over.";
+        game_description = "Info:\n\tYou're trapped in a strange cyber prison where nobody can tell who's who. You know some of your friends are trapped here too, but " +
+                           "there are also disguised cyber guards who are impersonating them! You need to find out who's a guard and who's a friend, doing your best to " +
+                           "verify which people truly did get scammed and sent here, and which are making their stories up. Oh, and be careful of cameras and guards-- " +
+                           "if you or a prisoner gets seen walking around, you're dead meat!";
+        //game_controls = wordWrapBitmapText(game_controls, 9, 700);
+        game_description = wordWrapBitmapText(game_description, 9, 700);
+
+        button_back = game.add.button(game.width/2, game.height - 60, 'button', this.actionOnClickback, this);
+        text_back = game.add.bitmapText(button_back.x, button_back.y, 'font_game', 'BACK', 20);
         button_back.anchor.setTo(0.5, 0.5);
-        text_back = game.add.text(button_back.x, button_back.y, 'BACK', {fontSize: '20px', fill: 'black'});
         text_back.anchor.setTo(0.5, 0.5);
-        game.add.text(game.width/2, 100, 'Game Description', {fontSize: '20px', fill: 'white'}).anchor.setTo(0.5, 0.5);;
-    },
-    update: function() {
-        if(button_back.input.pointerOver()) {
-            text_back.fill = 'green';
-        } else {
-            text_back.fill = 'black';
-        }
+
+        var title_text = game.add.bitmapText(game.width/2, 40, 'font_game', "Controls and Information", 28)
+        var controls_text = game.add.bitmapText(game.width/2, 80, 'font_game', game_controls, 20);
+        var descp_text = game.add.bitmapText(controls_text.x, controls_text.y + controls_text.height + 40, 'font_game', game_description, 20);
+        controls_text.x -= descp_text.width/2;
+        title_text.anchor.setTo(0.5, 0.5);
+        descp_text.anchor.setTo(0.5, 0);
+
     },
     actionOnClickback: function() {
-        this.state.start('Menu');
+       this.state.start('Menu');
     }
+
 };
 GameStateHandler.Play = function() {
 };
@@ -909,32 +953,6 @@ GameStateHandler.Play.prototype = {
         player.update(cursors);
    }
 };
-function wordWrapBitmapText(text, size, wrapWidth){
-    if(text.length == 0){
-        return text;
-    }
-    var maxChars = Math.floor(wrapWidth / size);
-    var subs = text.split(" ");
-    for(var i = 0; i < subs.length; i++){
-        if(subs[i].length > maxChars){
-            subs.splice(i, 1, subs[i].substr(0, maxChars), subs[i].substr(maxChars));
-        }
-    }
-    var ret = "";
-    var lineLength = subs[0].length;
-    ret += subs[0];
-    for(var i = 1; i < subs.length; i++){
-        if(lineLength + subs[i].length > maxChars){
-            ret += "\n";
-            lineLength = subs[i].length + 1;
-        } else {
-            ret += " ";
-            lineLength += subs[i].length + 1;
-        }
-        ret += subs[i];
-    }
-    return ret;
-}
 GameStateHandler.GameOver = function() {
     var button_restart, text_restart;
 };
