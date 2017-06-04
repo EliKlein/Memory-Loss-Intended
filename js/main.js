@@ -1,7 +1,6 @@
 var GameStateHandler = {};
 var game = new Phaser.Game(1024, 576, Phaser.AUTO);
 var map;
-var walls;
 var lightTexture;
 var lightSprite;
 var buttonpressed;
@@ -20,14 +19,51 @@ var randomX;
 var randomY;
 var prisonerStoryList;
 var gameOverTip = "";
-var enterKey, spacebarKey;
-var steps;
+var steps, menuMusic, backgroundMusic;
 
 function findContainingObject(sprite, array){
     for(var i = 0; i < array.length; i++){
         if(array[i].sprite === sprite) return array[i];
     }
     return null;
+}
+
+class KeyBinds{
+    constructor(){
+        //prevents keys from affecting browser
+        game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT, Phaser.Keyboard.UP, Phaser.Keyboard.DOWN,
+                                           Phaser.Keyboard.SPACEBAR, Phaser.Keyboard.ENTER,
+                                           Phaser.Keyboard.W, Phaser.Keyboard.A, Phaser.Keyboard.S, Phaser.Keyboard.D]);
+        //actually tracks keys
+        this.cursors = game.input.keyboard.createCursorKeys();
+        this.enterKey = game.input.keyboard.addKey(Phaser.Keyboard.ENTER);
+        this.spacebarKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+        this.w = game.input.keyboard.addKey(Phaser.Keyboard.W);
+        this.a = game.input.keyboard.addKey(Phaser.Keyboard.A);
+        this.s = game.input.keyboard.addKey(Phaser.Keyboard.S);
+        this.d = game.input.keyboard.addKey(Phaser.Keyboard.D);
+    }
+    up(){
+        return this.cursors.up.isDown || this.w.isDown;
+    }
+    down(){
+        return this.cursors.down.isDown || this.s.isDown;
+    }
+    right(){
+        return this.cursors.right.isDown || this.d.isDown;
+    }
+    left(){
+        return this.cursors.left.isDown || this.a.isDown;
+    }
+    direction(){
+        return this.up()||this.down()||this.right()||this.left();
+    }
+    call(){
+        return this.enterKey.justPressed();//this.spacebarKey.justPressed() || this.enterKey.justPressed();
+    }
+    clear(){
+        return this.spacebarKey.justPressed();
+    }
 }
 
 class Player{
@@ -42,27 +78,30 @@ class Player{
         player.body.collideWorldBounds = true;
         player.animations.add('moving', Phaser.Animation.generateFrameNames('survivor-move_flashlight_', 0, 19), 60, true);
         this.sprite = player;
-    }
-    update(cursors) {
         
+        game.input.addMoveCallback(function(pointer, x, y){
+            if(this.sprite.body.velocity.x == 0 && this.sprite.body.velocity.y == 0) this.pointTo(x + game.camera.x, y + game.camera.y);
+        }, this);
+    }
+    update() {
         //make the player move
         this.sprite.body.velocity.x = 0;
         this.sprite.body.velocity.y = 0;
-        if (cursors.left.isDown) {
+        if (keys.left()) {
             this.sprite.body.velocity.x = -PLAYER_SPEED;
             this.sprite.animations.play('moving');
-        } else if (cursors.right.isDown) {
+        } else if (keys.right()) {
             this.sprite.body.velocity.x = PLAYER_SPEED;
             this.sprite.animations.play('moving');
         }
-        if (cursors.up.isDown) {
+        if (keys.up()) {
             this.sprite.body.velocity.y = -PLAYER_SPEED;
             this.sprite.animations.play('moving');
             if (this.sprite.body.velocity.x != 0) {
                 this.sprite.body.velocity.x *= Math.sqrt(2) / 2;
                 this.sprite.body.velocity.y *= Math.sqrt(2) / 2;
             }
-        } else if (cursors.down.isDown) {
+        } else if (keys.down()) {
             this.sprite.body.velocity.y = PLAYER_SPEED;
             this.sprite.animations.play('moving');
             if (this.sprite.body.velocity.x != 0) {
@@ -70,13 +109,13 @@ class Player{
                 this.sprite.body.velocity.y *= Math.sqrt(2) / 2;
             }
         }
-        if (this.sprite.body.velocity.x == 0 && this.sprite.body.velocity.y == 0) {
-            steps.stop();
-            this.sprite.animations.stop();
-        } else {
+        if (keys.direction()) {
             steps.play('', 0.25, 0.75, false, false);//plays stepping sounds
             this.sprite.angle = Math.atan(this.sprite.body.velocity.y / this.sprite.body.velocity.x) * 180 / Math.PI;
             if (this.sprite.body.velocity.x < 0) this.sprite.angle += 180;
+        } else {
+            steps.stop();
+            this.sprite.animations.stop();
         }
 
         
@@ -726,16 +765,15 @@ GameStateHandler.Preloader.prototype = {
         this.load.image('Menu_Background', 'Menu_Background.png');
         this.load.image('button', 'grey_button.png');
         this.load.bitmapFont('font_game', "font_game.png", "font_game.fnt")
+        this.load.audio('menu',['menumusic.mp3']);
+        this.load.audio('bgm',['bgm4.ogg']);
         this.load.audio('steps',['steps.ogg']);
 
         prisonerStoryList = new StoryList();
     },
     create: function() {
         console.log('Preloader: create');
-        //Preventing the key to affect browser view
-        game.input.keyboard.addKeyCapture([Phaser.Keyboard.LEFT, Phaser.Keyboard.RIGHT, Phaser.Keyboard.UP, Phaser.Keyboard.DOWN,
-                                           Phaser.Keyboard.SPACEBAR, Phaser.Keyboard.ENTER,
-                                           Phaser.Keyboard.W, Phaser.Keyboard.A, Phaser.Keyboard.S, Phaser.Keyboard.D]);
+        keys = new KeyBinds(); //set up keyboard input
     },
     update: function() {
         this.state.start('Menu');
@@ -782,7 +820,9 @@ GameStateHandler.Menu = function() {
     var button_play, button_options, textplay, textopt;
 };
 GameStateHandler.Menu.prototype = {
-    preload: function() {},
+    preload: function() {
+        menuMusic = game.add.audio('menu');
+    },
     create: function() {
         var Menu_backGround = this.add.image(0,0, 'Menu_Background');
         Menu_backGround.alpha = 0.35;
@@ -823,13 +863,12 @@ GameStateHandler.Options_Screen.prototype = {
     create: function() {
         var Menu_backGround = this.add.image(0,0, 'Menu_Background');
         Menu_backGround.alpha = 0.35;
-        game_controls = "Controls:\n\tUse the ARROW KEYS to move.\n\tWhile standing still, use the MOUSE to aim your flashlight.\n\t" +
-                        "Walk into prisoners to talk to them.\n\tAfter a prisoner or two is with you, press ENTER to call them over.";
+        game_controls = "Controls:\n\tUse the ARROW KEYS or WASD to move.\n\tWhile standing still, use the MOUSE to aim your flashlight.\n\t" +
+                        "Walk into prisoners to talk to them.\n\tAfter a prisoner or two is with you, ENTER or SPACEBAR will call them over.";
         game_description = "Info:\n\tYou're trapped in a strange cyber prison where nobody can tell who's who. You know some of your friends are trapped here too, but " +
                            "there are also disguised cyber guards who are impersonating them! You need to find out who's a guard and who's a friend, doing your best to " +
                            "verify which people truly did get scammed and sent here, and which are making their stories up. Oh, and be careful of cameras and guards-- " +
                            "if you or a prisoner gets seen walking around, you're dead meat!";
-        //game_controls = wordWrapBitmapText(game_controls, 9, 700);
         game_description = wordWrapBitmapText(game_description, 9, 700);
 
         button_back = game.add.button(game.width/2, game.height - 60, 'button', this.actionOnClickback, this);
@@ -857,6 +896,7 @@ GameStateHandler.Play.prototype = {
         console.log('Play: preload');
         game.load.image('tiles', 'Tiles.png'); //loading tileset image
         prisonerStoryList.reset();
+        backgroundMusic = game.add.audio('bgm');
         steps = game.add.audio('steps');
     },
     create: function() {
@@ -864,14 +904,6 @@ GameStateHandler.Play.prototype = {
         game.time.advancedTiming = true;
         game.physics.startSystem(Phaser.Physics.ARCADE);
         map = makeMap();
-        walls = [];
-        //Adding each tile to an array
-        for (var x = 0; x < map.width; ++x) {
-            for (var y = 0; y < map.height; ++y) {
-                if (map.getTile(x, y) != null)
-                    walls.push(new WallTile(map.getTile(x, y)));
-            }
-        }
 
         enemiesArray = [];
         prisonerArray = [];
@@ -896,27 +928,25 @@ GameStateHandler.Play.prototype = {
         new Prisoner(1935, 140);
         new Prisoner(1950, 480);
 
+        //creating texture for shadows/light
         lightTexture = game.add.bitmapData(map.widthInPixels, map.heightInPixels);
         lightSprite = game.add.image(0, 0, lightTexture);
         lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
+
+        //create player, do camera follow
         player = new Player(7*32, 7*32);
         game.camera.follow(player.sprite);
+
+        //finish making map because the walls have to appear above the shadow/light layer so you can see them
         map.addTilesetImage('Tiles', 'tiles');
         groundLayer = map.createLayer('TileLayer'); //creating a layer
         groundLayer.resizeWorld();
-        map.setCollisionByExclusion([],true, groundLayer); // the old way of doing 
+        map.setCollisionByExclusion([], true, groundLayer); // the old function that was here was bugging me since it just used an arbitrarily large number
 
+        //set up the text objects for prisoners (also has to appear above shadow/light layer)
         for(var i = 0; i < prisonerArray.length; i++){
             prisonerArray[i].makeText();
         }
-        
-        game.input.addMoveCallback(function(pointer, x, y){
-            if(player.sprite.body.velocity.x == 0 && player.sprite.body.velocity.y == 0) player.pointTo(x + game.camera.x, y + game.camera.y);
-        }, game);
-
-        cursors = game.input.keyboard.createCursorKeys();
-        enterKey = game.input.keyboard.addKey(Phaser.Keyboard.ENTER);
-        spacebarKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
     },
     update: function() {
         if(stageComplete()){
@@ -941,24 +971,24 @@ GameStateHandler.Play.prototype = {
             enemiesArray[i].update();
         }
 
-        if(enterKey.justPressed()){
+        if(keys.call()){
             for(var i = 0; i < prisonerArray.length; i++){
                 prisonerArray[i].followPlayer();
             }
         }
 
-        if(spacebarKey.justPressed()){
+        if(keys.clear()){
             for(var i = 0; i < prisonerArray.length; i++){
                 prisonerArray[i].TEMPTHING.kill();
             }
         }
 
-        if (cursors.left.isDown || cursors.right.isDown || cursors.up.isDown || cursors.down.isDown){
+        if (keys.direction()){
             for(var i = 0; i < prisonerArray.length; i++){
                 prisonerArray[i].stopText();
             }
         }
-        player.update(cursors);
+        player.update();
    }
 };
 GameStateHandler.GameOver = function() {
