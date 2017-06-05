@@ -851,6 +851,7 @@ GameStateHandler.Menu.prototype = {
         button_options.anchor.setTo(0.5, 0.5);
         textopt = game.add.bitmapText(button_options.x, button_options.y, "font_game", 'HELP', 20);
         textopt.anchor.setTo(0.5, 0.5);
+        MenuMusic.play('', 0, 0.25, true);
 
     },
     update: function() {
@@ -866,6 +867,7 @@ GameStateHandler.Menu.prototype = {
         }
     },
     actionOnClickplay: function() {
+        MenuMusic.stop();
         this.state.start('Play');
     },
     actionOnClickopt: function() {
@@ -927,6 +929,8 @@ GameStateHandler.Play.prototype = {
         enemiesArray = [];
         prisonerArray = [];
 
+        backgroundMusic.play('', 0, 0.25, true);
+
         //creating guards
         enemiesGroup = game.add.group();
         enemiesGroup.enableBody = true;
@@ -971,6 +975,7 @@ GameStateHandler.Play.prototype = {
         if(stageComplete()){
             console.log("congrats!");
             gameOverTip = "We don't have a win screen or a stage 2 so you get this instead."
+            backgroundMusic.stop();
             game.state.start("GameOver");
         }
 
