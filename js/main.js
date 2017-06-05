@@ -7,11 +7,13 @@ var buttonpressed;
 var text;
 var style;
 var hintStyle;
-var prisoners;
-var prisonerArray;
 var names = ["Prisoner"];
+var prisonersGroup;
+var prisonerArray;
 var enemiesGroup;
 var enemiesArray;
+var camerasGroup;
+var cameraArray;
 var testCamera;
 var player;
 var PLAYER_SPEED = 150;
@@ -209,7 +211,7 @@ class StoryList{
 
 class Prisoner{
     constructor(x, y) {
-        this.sprite = prisoners.create(x, y, 'Prisoner');
+        this.sprite = prisonersGroup.create(x, y, 'Prisoner');
         this.sprite.anchor.setTo(0.5, 0.5);
         this.sprite.body.immovable = true;
         this.story = prisonerStoryList.getRandom();
@@ -410,7 +412,7 @@ class CameraEnemy{
         this.light = new LightSource(this, 225, 40, 8);
         this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
         this.sprite.anchor.setTo(0.5, 0.5);
-        this.direction = this.sprite.angle;
+        this.sprite.angle = arcStart;
 
         this.speed = 1/150;
 
@@ -418,6 +420,8 @@ class CameraEnemy{
         this.arcStart = arcStart;
         this.arcEnd = arcEnd;
         this.timer = 0;
+
+        cameraArray.push(this);
     }
     update(){
         if(this.state == 0){
@@ -530,12 +534,18 @@ class LightSource{
     }
 }
 
-function doLights(objectsWithLights){
+function doLights(){
     lightTexture.context.fillStyle = "rgba(0, 0, 0, 0.85)";
     lightTexture.context.strokeStyle = 'rgba(255, 255, 255, 0.0)'
     lightTexture.context.fillRect(game.camera.x, game.camera.y, game.width, game.height);
-    for(var i = 0; i < objectsWithLights.length; i++){
-        objectsWithLights[i].light.draw();
+    for(var i = 0; i < arguments.length; i++){
+        if(arguments[i].length != undefined){
+            for(var j = 0; j < arguments[i].length; j++){
+                arguments[i][j].light.draw();
+            }
+        } else {
+            arguments[i].light.draw();
+        }
     }
 }
 
@@ -557,9 +567,9 @@ class WallTile{
     }
 }
 
-function makeMap() {
+function makeMap(ref) {
     //creating the map (I feel like maybe this should go in its own class, but it might take more work than the other things)
-    var m = game.add.tilemap('map');
+    var m = game.add.tilemap(ref);
     game.add.image(0, 0, 'Background');
     game.world.setBounds(0, 0, m.widthInPixels, m.heightInPixels);
     return m;
@@ -776,6 +786,7 @@ GameStateHandler.Preloader.prototype = {
         this.load.atlas('guard', 'guard.png', 'guards.json');
         this.load.image('camera', 'Camera.png');
         this.load.tilemap('map', 'GameMap.json', null, Phaser.Tilemap.TILED_JSON); //Loding the map with tiles
+        this.load.tilemap('map2', 'GameMapStage2.json', null, Phaser.Tilemap.TILED_JSON); //Loding the map with tiles
         this.load.atlas('Prisoner', 'PTest.png', 'PTest.json');
         this.load.image('Menu_Background', 'Menu_Background.png');
         this.load.image('button', 'grey_button.png');
@@ -867,8 +878,12 @@ GameStateHandler.Menu.prototype = {
         }
     },
     actionOnClickplay: function() {
+<<<<<<< HEAD
         MenuMusic.stop();
         this.state.start('Play');
+=======
+        this.state.start('Stage1');
+>>>>>>> ee1eb2086ebfd580c16334f1c233d3b21b996e3e
     },
     actionOnClickopt: function() {
         this.state.start('Options_Screen');
@@ -908,11 +923,11 @@ GameStateHandler.Options_Screen.prototype = {
     }
 
 };
-GameStateHandler.Play = function() {
+GameStateHandler.Stage1 = function() {
 };
-GameStateHandler.Play.prototype = {
+GameStateHandler.Stage1.prototype = {
     preload: function() {
-        console.log('Play: preload');
+        console.log('Stage1: preload');
         game.load.image('tiles', 'Tiles.png'); //loading tileset image
         prisonerStoryList.reset();
         backgroundMusic = game.add.audio('bgm');
@@ -921,10 +936,105 @@ GameStateHandler.Play.prototype = {
         deadSound = game.add.audio('dead');
     },
     create: function() {
-        console.log('Play: create');
+        console.log('Stage1: create');
         game.time.advancedTiming = true;
         game.physics.startSystem(Phaser.Physics.ARCADE);
-        map = makeMap();
+        map = makeMap('map');
+
+        prisonerArray = [];
+        cameraArray = [];
+
+        //creating cameras
+        camerasGroup = game.add.group();
+        new CameraEnemy(510, 60, 0, 90);
+        new CameraEnemy(48, 48, 80, 100);
+
+        //creating prisoners
+        prisonersGroup = game.add.group();
+        prisonersGroup.enableBody = true;
+        new Prisoner(250, 115);
+        new Prisoner(80, 475);
+        new Prisoner(1100, 465);
+        new Prisoner(1385, 110);
+        new Prisoner(1935, 140);
+        new Prisoner(1950, 480);
+
+        //creating texture for shadows/light
+        lightTexture = game.add.bitmapData(map.widthInPixels, map.heightInPixels);
+        lightSprite = game.add.image(0, 0, lightTexture);
+        lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
+
+        //create player, do camera follow
+        player = new Player(7*32, 7*32);
+        game.camera.follow(player.sprite);
+
+        //finish making map because the walls have to appear above the shadow/light layer so you can see them
+        map.addTilesetImage('Tiles', 'tiles');
+        groundLayer = map.createLayer('TileLayer'); //creating a layer
+        groundLayer.resizeWorld();
+        map.setCollisionByExclusion([], true, groundLayer); // the old function that was here was bugging me since it just used an arbitrarily large number
+
+        //set up the text objects for prisoners (also has to appear above shadow/light layer)
+        for(var i = 0; i < prisonerArray.length; i++){
+            prisonerArray[i].makeText();
+        }
+    },
+    update: function() {
+        if(stageComplete()){
+            console.log("congrats!");
+            gameOverTip = "We don't have a win screen or a stage 2 so you get this instead."
+            game.state.start("GameOver");
+        }
+
+        game.physics.arcade.collide(player.sprite, groundLayer);
+        game.physics.arcade.collide(player.sprite, camerasGroup);
+        game.physics.arcade.collide(player.sprite, prisonersGroup, showText);
+        game.physics.arcade.collide(enemiesGroup, groundLayer, changeAnimation);
+        game.physics.arcade.collide(player.sprite, enemiesGroup, stopAnimation);
+
+        lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
+        
+        for(var i = 0; i < cameraArray.length; i++){
+            cameraArray[i].update();
+        }
+
+        doLights(player, cameraArray);
+
+        if(keys.call()){
+            for(var i = 0; i < prisonerArray.length; i++){
+                prisonerArray[i].followPlayer();
+            }
+        }
+
+        if(keys.clear()){
+            for(var i = 0; i < prisonerArray.length; i++){
+                prisonerArray[i].TEMPTHING.kill();
+            }
+        }
+
+        if (keys.direction()){
+            for(var i = 0; i < prisonerArray.length; i++){
+                prisonerArray[i].stopText();
+            }
+        }
+        player.update();
+   }
+};
+GameStateHandler.Stage2 = function() {
+};
+GameStateHandler.Stage2.prototype = {
+    preload: function() {
+        console.log('Stage2: preload');
+        backgroundMusic = game.add.audio('bgm');
+        stepSound = game.add.audio('steps');
+        alertSound = game.add.audio('alert');
+        deadSound = game.add.audio('dead');
+    },
+    create: function() {
+        console.log('Stage2: create');
+        game.time.advancedTiming = true;
+        game.physics.startSystem(Phaser.Physics.ARCADE);
+        map = makeMap("map2");
 
         enemiesArray = [];
         prisonerArray = [];
@@ -939,11 +1049,9 @@ GameStateHandler.Play.prototype = {
         new Guard(1210, 290).right();
         new Guard(170, 260).left();
 
-        testCamera = new CameraEnemy(510, 60, 0, 90);
-
         //creating prisoner(s)
-        prisoners = game.add.group();
-        prisoners.enableBody = true;
+        prisonersGroup = game.add.group();
+        prisonersGroup.enableBody = true;
         new Prisoner(250, 115);
         new Prisoner(80, 475);
         new Prisoner(1100, 465);
@@ -981,15 +1089,13 @@ GameStateHandler.Play.prototype = {
 
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, testCamera.sprite);
-        game.physics.arcade.collide(player.sprite, prisoners, showText);
+        game.physics.arcade.collide(player.sprite, prisonersGroup, showText);
         game.physics.arcade.collide(enemiesGroup, groundLayer, changeAnimation);
         game.physics.arcade.collide(player.sprite, enemiesGroup, stopAnimation);
 
-        testCamera.update();
-
         lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
 
-        doLights([player, testCamera]);
+        doLights(player, enemiesArray);
         
         for(var i = 0; i < enemiesArray.length; i++){
             enemiesArray[i].update();
@@ -1044,6 +1150,6 @@ GameStateHandler.GameOver.prototype = {
 game.state.add('Preloader', GameStateHandler.Preloader);
 game.state.add('Menu', GameStateHandler.Menu);
 game.state.add('Options_Screen', GameStateHandler.Options_Screen);
-game.state.add('Play', GameStateHandler.Play);
+game.state.add('Stage1', GameStateHandler.Stage1);
 game.state.add('GameOver', GameStateHandler.GameOver);
 game.state.start('Preloader');
