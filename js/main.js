@@ -19,14 +19,7 @@ var randomX;
 var randomY;
 var prisonerStoryList;
 var gameOverTip = "";
-var steps, menuMusic, backgroundMusic;
-
-function findContainingObject(sprite, array){
-    for(var i = 0; i < array.length; i++){
-        if(array[i].sprite === sprite) return array[i];
-    }
-    return null;
-}
+var stepSound, alertSound, deadSound, menuMusic, backgroundMusic;
 
 class KeyBinds{
     constructor(){
@@ -110,11 +103,11 @@ class Player{
             }
         }
         if (keys.direction()) {
-            steps.play('', 0.25, 0.75, false, false);//plays stepping sounds
+            stepSound.play('', 0.25, 0.75, false, false);//plays stepping sounds
             this.sprite.angle = Math.atan(this.sprite.body.velocity.y / this.sprite.body.velocity.x) * 180 / Math.PI;
             if (this.sprite.body.velocity.x < 0) this.sprite.angle += 180;
         } else {
-            steps.stop();
+            stepSound.stop();
             this.sprite.animations.stop();
         }
 
@@ -360,15 +353,20 @@ class Guard{
         this.psSprite.anchor.setTo(0.5, 0.5);
         this.psSprite.scale.setTo(0.5, 0.5);
         this.psSprite.kill();
+
+        this.timer = null;
     }
     update(){
-        if(this.light.visible(player)){
+        if(this.light.visible(player) && 1==0){
             this.psSprite.reset(this.sprite.x, this.sprite.y-40);
             //console.log("seen by guard");
-            game.seen.play('', 0, 0.5, false,false);
-            timeCheck = game.time.now;
-            if (game.time.now - timeCheck > 1000){
-                game.alert.play('', 0, 0.5, false, false);
+            alertSound.play('', 0, 0.5, false,false);
+            if(this.timer == null){
+                this.timer = game.time.now;
+            } else if (game.time.now - this.timer > 1000){
+                deadSound.play('', 0, 0.5, false, false);
+                gameOverTip = "You were seen by a guard!"
+                game.state.start("GameOver")
             }
         } else this.psSprite.kill();
     }
@@ -413,7 +411,10 @@ class CameraEnemy{
         this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
         this.sprite.anchor.setTo(0.5, 0.5);
         this.direction = this.sprite.angle;
-        this.state = (arcEnd - arcStart)/120;
+
+        this.speed = 1/150;
+
+        this.state = (arcEnd - arcStart)*this.speed;
         this.arcStart = arcStart;
         this.arcEnd = arcEnd;
         this.timer = 0;
@@ -421,10 +422,10 @@ class CameraEnemy{
     update(){
         if(this.state == 0){
             this.timer += 1;
-            if(this.timer > 60){
+            if(this.timer > 150){
                 this.timer = 0;
-                if(this.sprite.angle < this.arcStart) this.state = (this.arcEnd - this.arcStart)/120;
-                else this.state = (this.arcStart - this.arcEnd)/120;
+                if(this.sprite.angle < this.arcStart) this.state = (this.arcEnd - this.arcStart)*this.speed;
+                else this.state = (this.arcStart - this.arcEnd)*this.speed;
                 this.sprite.angle += this.state;
             }
         } else {
@@ -564,6 +565,13 @@ function makeMap() {
     return m;
 }
 
+function findContainingObject(sprite, array){
+    for(var i = 0; i < array.length; i++){
+        if(array[i].sprite === sprite) return array[i];
+    }
+    return null;
+}
+
 function directionTo(source, x, y){
         var d;
         if(source.getX() == x){
@@ -576,6 +584,7 @@ function directionTo(source, x, y){
         if(source.getX() > x) return d + 180;
         return d;
 }
+
 function distance(x1, y1, x2, y2){
     return Math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
 }
@@ -774,6 +783,8 @@ GameStateHandler.Preloader.prototype = {
         this.load.audio('menu',['menumusic.mp3']);
         this.load.audio('bgm',['bgm4.ogg']);
         this.load.audio('steps',['steps.ogg']);
+        this.load.audio('alert',['alert2.mp3']);
+        this.load.audio('dead',['alert1.mp3'])
 
         prisonerStoryList = new StoryList();
     },
@@ -903,7 +914,9 @@ GameStateHandler.Play.prototype = {
         game.load.image('tiles', 'Tiles.png'); //loading tileset image
         prisonerStoryList.reset();
         backgroundMusic = game.add.audio('bgm');
-        steps = game.add.audio('steps');
+        stepSound = game.add.audio('steps');
+        alertSound = game.add.audio('alert');
+        deadSound = game.add.audio('dead');
     },
     create: function() {
         console.log('Play: create');
