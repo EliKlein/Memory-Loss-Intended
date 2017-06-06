@@ -225,6 +225,8 @@ class Prisoner{
         this.story = prisonerStoryList.getRandom();
         this.name = names[Math.floor(Math.random()*names.length)]
 
+        this.index = -1;
+
         this.roundCornerRadius = 7;
         prisonerArray.push(this);
     }
@@ -317,19 +319,26 @@ class Prisoner{
         this.stopText();
     }
     followPlayer(){
-        if(this.accepted){
-            //game.physics.arcade.moveToXY(this.sprite, player.getX(), player.getY());
-        }
-        var path = findPath(this.sprite.x, this.sprite.y, player.sprite.x, player.sprite.y, map);
-        if(path){
-            this.TEMPTHING.reset();
-            this.TEMPTHING.clear();
-            this.TEMPTHING.beginFill(0xFFFFFF);
-            for(var i = 0; i < path.length; i++){
-                this.TEMPTHING.drawCircle(16+path[i].x*32, 16+path[i].y*32, 13);
+        if(this.index != -1){
+            this.path = findPath(this.sprite.x, this.sprite.y, player.sprite.x, player.sprite.y, map);
+            if(this.path.length > 0){
+                //pathing http://www.html5gamedevs.com/topic/6569-move-a-sprite-along-a-path/
+                //turns out the way they do it there is pretty shit
+                var p = this.path.shift();
+                this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
+                this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 10, null, false, this.index * 200);
+                var temp = function(){
+                    if(this.path.length > 0){
+                        var p = this.path.shift();
+                        this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
+                        this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 10);
+                        this.tween.onComplete.addOnce(temp, this);
+                        this.tween.start();
+                    }
+                }
+                this.tween.onComplete.addOnce(temp, this);
+                this.tween.start();
             }
-        } else {
-            this.TEMPTHING.kill();
         }
     }
     getX(){
@@ -342,6 +351,7 @@ class Prisoner{
         return this.sprite.angle;
     }
     stageTwo(i){
+        this.index = i;
         var x = 64 + ((i%2)*64);
         var y = 448;
         if(i > 1) y += 64;
@@ -690,6 +700,10 @@ function findPath(worldSX, worldSY, worldEX, worldEY, map){
             //I know this is really unclear, but I like how it fits in one line
             while(path[0].x != start.x || path[0].y != start.y) path.unshift(explored[path[0].y][path[0].x]);
             path.shift();
+            for(var i = 0; i < path.length; i++){
+                path[i].x = (path[i].x * 32) + 16;
+                path[i].y = (path[i].y * 32) + 16;
+            }
             return path;
         }
         adj = adjacentTiles(curr, map, explored);
@@ -720,7 +734,7 @@ function findPath(worldSX, worldSY, worldEX, worldEY, map){
             }
         }
     }
-    return null;
+    return [];
 }
 
 function adjacentTiles(tile, map, explored){
@@ -769,6 +783,15 @@ function stopAnimation(player, enemySprite){
     if(enemySprite.animations.currentAnim.name == "movingleft") enemySprite.frame = 8;
     if(enemySprite.animations.currentAnim.name == "movingright") enemySprite.frame = 9;
 }
+
+/*function stopFollow(otherSprite, prisonerSprite){
+    console.log(prisonerSprite);
+    console.log(otherSprite);
+    var prisoner = findContainingObject(prisonerSprite, prisonerArray);
+    prisoner.path = [];
+    prisoner.tween.stop();
+    game.add.tween(prisoner.sprite).to(prisoner.previousPoint, 100);
+}*/
 
 function stageComplete(){
     var numAccountedFor = 0;
@@ -994,6 +1017,8 @@ GameStateHandler.Stage1.prototype = {
 
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, prisonersGroup, showText);
+        //game.physics.arcade.collide(prisonersGroup, player.sprite, stopFollow);
+        //game.physics.arcade.collide(prisonersGroup, prisonersGroup, stopFollow);
         game.physics.arcade.collide(enemiesGroup, groundLayer, changeAnimation);
         game.physics.arcade.collide(player.sprite, enemiesGroup, stopAnimation);
 
@@ -1082,7 +1107,6 @@ GameStateHandler.Stage2.prototype = {
 
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, camerasGroup);
-        game.physics.arcade.collide(player.sprite, prisonersGroup, showText);
 
         for(var i = 0; i < cameraArray.length; i++){
             cameraArray[i].update();
