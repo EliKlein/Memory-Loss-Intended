@@ -828,7 +828,7 @@ GameStateHandler.Preloader.prototype = {
         this.load.image('Menu_Background', 'Menu_Background.png');
         this.load.image('button', 'grey_button.png');
         this.load.bitmapFont('font_game', "font_game.png", "font_game.fnt")
-        this.load.audio('menu',['menumusic.mp3']);
+        this.load.audio('menu',['menumusic2.ogg']);//2 has creepy vibe, 3 too upbeat, think we should use 2
         this.load.audio('bgm',['bgm4.ogg']);
         this.load.audio('steps',['steps.ogg']);
         this.load.audio('alert',['alert2.mp3']);
@@ -899,7 +899,7 @@ GameStateHandler.Menu.prototype = {
         button_options.anchor.setTo(0.5, 0.5);
         textopt = game.add.bitmapText(button_options.x, button_options.y, "font_game", 'HELP', 20);
         textopt.anchor.setTo(0.5, 0.5);
-        MenuMusic.play('', 0, 0.25, true);
+        menuMusic.play('', 0, 0.25, true, false);
 
     },
     update: function() {
@@ -915,10 +915,11 @@ GameStateHandler.Menu.prototype = {
         }
     },
     actionOnClickplay: function() {
-        MenuMusic.stop();
+        menuMusic.stop();
         this.state.start('Stage1');
     },
     actionOnClickopt: function() {
+        menuMusic.stop();
         this.state.start('Options_Screen');
     }
 };
@@ -927,6 +928,9 @@ GameStateHandler.Options_Screen = function() {
   var button_back, text_back, game_description, game_controls;
 };
 GameStateHandler.Options_Screen.prototype = {
+    preload: function() {
+        menuMusic = game.add.audio('menu');
+    },
     create: function() {
         var Menu_backGround = this.add.image(0,0, 'Menu_Background');
         Menu_backGround.alpha = 0.35;
@@ -949,10 +953,12 @@ GameStateHandler.Options_Screen.prototype = {
         controls_text.x -= descp_text.width/2;
         title_text.anchor.setTo(0.5, 0.5);
         descp_text.anchor.setTo(0.5, 0);
+        menuMusic.play('', 0, 0.25, true, false);
 
     },
     actionOnClickback: function() {
-       this.state.start('Menu');
+        menuMusic.stop();
+        this.state.start('Menu');
     }
 
 };
@@ -973,6 +979,7 @@ GameStateHandler.Stage1.prototype = {
         game.time.advancedTiming = true;
         game.physics.startSystem(Phaser.Physics.ARCADE);
         map = makeMap('map', 'Background1');
+        backgroundMusic.play('', 0, 0.25, true);
 
         prisonerArray = [];
         enemiesArray = [];
@@ -1041,6 +1048,7 @@ GameStateHandler.Stage1.prototype = {
             for(var i = 0; i < prisonerArray.length; i++){
                 prisonerArray[i].TEMPTHING.kill();
             }
+            backgroundMusic.stop();
             game.state.start("Stage2");
         }
 
@@ -1069,8 +1077,6 @@ GameStateHandler.Stage2.prototype = {
         map = makeMap("map2", 'Background2');
 
         cameraArray = [];
-
-<<<<<<< HEAD
         backgroundMusic.play('', 0, 0.25, true);
 
         //creating guards
@@ -1090,10 +1096,8 @@ GameStateHandler.Stage2.prototype = {
         new Prisoner(1385, 110);
         new Prisoner(1935, 140);
         new Prisoner(1950, 480);
-=======
         //creating cameras
         if(camerasHidden) makeCameras();
->>>>>>> 95cbb8ae1783bfad8c06710e215a0b9559b67f19
 
         //creating texture for shadows/light
         lightTexture = game.add.bitmapData(map.widthInPixels, map.heightInPixels);
@@ -1128,15 +1132,12 @@ GameStateHandler.Stage2.prototype = {
         }
     },
     update: function() {
-<<<<<<< HEAD
         if(stageComplete()){
             console.log("congrats!");
             gameOverTip = "We don't have a win screen or a stage 2 so you get this instead."
             backgroundMusic.stop();
             game.state.start("GameOver");
         }
-=======
->>>>>>> 95cbb8ae1783bfad8c06710e215a0b9559b67f19
 
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, camerasGroup);
