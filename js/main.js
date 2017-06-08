@@ -231,7 +231,6 @@ class Prisoner{
         prisonerArray.push(this);
     }
     makeText(){
-        this.TEMPTHING = game.add.graphics();
 
         this.background = game.add.graphics();
 
@@ -784,15 +783,6 @@ function stopAnimation(player, enemySprite){
     if(enemySprite.animations.currentAnim.name == "movingright") enemySprite.frame = 9;
 }
 
-/*function stopFollow(otherSprite, prisonerSprite){
-    console.log(prisonerSprite);
-    console.log(otherSprite);
-    var prisoner = findContainingObject(prisonerSprite, prisonerArray);
-    prisoner.path = [];
-    prisoner.tween.stop();
-    game.add.tween(prisoner.sprite).to(prisoner.previousPoint, 100);
-}*/
-
 function stageComplete(){
     var numAccountedFor = 0;
     for(var i = 0; i < prisonerArray.length; i++){
@@ -987,12 +977,12 @@ GameStateHandler.Stage1.prototype = {
         //creating prisoners
         prisonersGroup = game.add.group();
         prisonersGroup.enableBody = true;
-        new Prisoner(250, 115);
-        new Prisoner(80, 475);
-        new Prisoner(1100, 465);
-        new Prisoner(1385, 110);
-        new Prisoner(1935, 140);
-        new Prisoner(1950, 480);
+        new Prisoner(80, 115);
+        new Prisoner(430, 475);
+        new Prisoner(940, 95);
+        new Prisoner(1245, 155);
+        new Prisoner(1300, 480);
+        new Prisoner(1960, 280);
 
         //creating guards
         if(guardsHidden) makeEnemies();
@@ -1026,8 +1016,6 @@ GameStateHandler.Stage1.prototype = {
 
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, prisonersGroup, showText);
-        //game.physics.arcade.collide(prisonersGroup, player.sprite, stopFollow);
-        //game.physics.arcade.collide(prisonersGroup, prisonersGroup, stopFollow);
         game.physics.arcade.collide(enemiesGroup, groundLayer, changeAnimation);
         game.physics.arcade.collide(player.sprite, enemiesGroup, stopAnimation);
 
@@ -1045,10 +1033,13 @@ GameStateHandler.Stage1.prototype = {
         }
 
         if(keys.clear()){
+<<<<<<< HEAD
+=======
             for(var i = 0; i < prisonerArray.length; i++){
                 prisonerArray[i].TEMPTHING.kill();
             }
             backgroundMusic.stop();
+>>>>>>> 72d49cb6a6a95a83a5e280ab2924f5e86ea32524
             game.state.start("Stage2");
         }
 
@@ -1147,18 +1138,19 @@ GameStateHandler.Stage2.prototype = {
         }
 
         lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
-        if(camerasHidden) doLights(player);
-        else doLights(player, cameraArray);
+        /*if(camerasHidden) doLights(player);
+        else doLights(player, cameraArray);*/
+        
+        //show lights just for cameras in sight
+        var camsInSight = [];
+        for(var i = 0; i < cameraArray.length; i++){
+            if(player.light.visible(cameraArray[i])) camsInSight.push(cameraArray[i]);
+        }
+        doLights(player, camsInSight);
         
         if(keys.call()){
             for(var i = 0; i < prisonerArray.length; i++){
                 prisonerArray[i].followPlayer();
-            }
-        }
-
-        if(keys.clear()){
-            for(var i = 0; i < prisonerArray.length; i++){
-                prisonerArray[i].TEMPTHING.kill();
             }
         }
 
