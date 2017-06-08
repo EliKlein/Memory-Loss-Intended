@@ -322,7 +322,7 @@ class Prisoner{
             this.path = findPath(this.sprite.x, this.sprite.y, player.sprite.x, player.sprite.y, map);
             if(this.path.length > 0){
                 //pathing http://www.html5gamedevs.com/topic/6569-move-a-sprite-along-a-path/
-                //turns out the way they do it there is pretty shit
+                //turns out the way they do it there is pretty shit in a lot of ways
                 var p = this.path.shift();
                 this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
                 this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 10, null, false, this.index * 200);
@@ -394,7 +394,13 @@ class Guard{
                 gameOverTip = "You were seen by a guard!"
                 game.state.start("GameOver")
             }
-        } else this.psSprite.kill();
+        } else {
+            this.psSprite.kill();
+            //if you were just seen, it should take less time than normal to notice you completely, but after a bit it'll reset.
+            //I don't know why but 100 just seems like the right number after a bit of testing.
+            if(this.timer != null && this.timer < game.time.now) this.timer += 100;
+            else this.timer = null;
+        }
     }
     down(){
         this.dir = 90;
@@ -443,15 +449,24 @@ class CameraEnemy{
         this.state = (arcEnd - arcStart)*this.speed;
         this.arcStart = arcStart;
         this.arcEnd = arcEnd;
-        this.timer = 0;
+        this.timer1 = 0;
 
         cameraArray.push(this);
+
+        this.timer2 = null;
     }
     update(){
+        if(this.psSprite == undefined){
+            this.psSprite = game.add.sprite(0, 0, "seen");
+            this.psSprite.anchor.setTo(0.5, 0.5);
+            this.psSprite.scale.setTo(0.5, 0.5);
+            this.psSprite.kill();
+        }
+
         if(this.state == 0){
-            this.timer += 1;
-            if(this.timer > 150){
-                this.timer = 0;
+            this.timer1 += 1;
+            if(this.timer1 > 150){
+                this.timer1 = 0;
                 if(this.sprite.angle < this.arcStart) this.state = (this.arcEnd - this.arcStart)*this.speed;
                 else this.state = (this.arcStart - this.arcEnd)*this.speed;
                 this.sprite.angle += this.state;
@@ -460,8 +475,30 @@ class CameraEnemy{
             this.sprite.angle += this.state;
             if(this.sprite.angle < this.arcStart || this.sprite.angle > this.arcEnd) this.state = 0;
         }
-        if(this.light.visible(player)){
-            //console.log("seen by camera");
+
+        var seen = false;
+        for(var i = 0; i < prisonerArray.length; i++){
+            if(this.light.visible(prisonerArray[i])){
+                seen = true;
+                break;
+            }
+        }
+        if(this.light.visible(player) || seen){
+            this.psSprite.reset(this.sprite.x, this.sprite.y);
+            if(this.timer2 == null){
+                alertSound.play('', 0, 0.5, false,false);
+                this.timer2 = game.time.now;
+            } else if (game.time.now - this.timer2 > 1000){
+                deadSound.play('', 0, 0.5, false, false);
+                gameOverTip = "Your group was seen by a camera! Make sure you don't lead your friends into view of the cameras either. You can see where they're pointing when you look at them."
+                game.state.start("GameOver");
+            }
+        } else {
+            this.psSprite.kill();
+            //if you were just seen, it should take less time than normal to notice you completely, but after a bit it'll reset.
+            //I don't know why but 100 just seems like the right number after a bit of testing.
+            if(this.timer2 != null && this.timer2 < game.time.now) this.timer2 += 100;
+            else this.timer2 = null;
         }
     }
     pointTo(x,y){
@@ -773,13 +810,17 @@ function changeAnimation(enemySprite, wall){
 }
 
 function stopAnimation(player, enemySprite){
-    enemySprite.body.velocity.x = 0;
+    gameOverTip = "You ran right into a guard.";
+    deadSound.play();
+    game.state.start("GameOver");
+
+    /*enemySprite.body.velocity.x = 0;
     enemySprite.body.velocity.y = 0;
     enemySprite.animations.stop();
     if(enemySprite.animations.currentAnim.name == "movingdown") enemySprite.frame = 0;
     if(enemySprite.animations.currentAnim.name == "movingup") enemySprite.frame = 12;
     if(enemySprite.animations.currentAnim.name == "movingleft") enemySprite.frame = 8;
-    if(enemySprite.animations.currentAnim.name == "movingright") enemySprite.frame = 9;
+    if(enemySprite.animations.currentAnim.name == "movingright") enemySprite.frame = 9;*/
 }
 
 function stageComplete(){
@@ -894,7 +935,6 @@ GameStateHandler.Menu.prototype = {
         textopt = game.add.bitmapText(button_options.x, button_options.y, "font_game", 'HELP', 20);
         textopt.anchor.setTo(0.5, 0.5);
         if(!menuMusic.isPlaying) menuMusic.play('', 0, 0.25, true);
-
     },
     update: function() {
         if(button_play.input.pointerOver()) {
@@ -1131,6 +1171,7 @@ GameStateHandler.GameOver = function() {
 GameStateHandler.GameOver.prototype = {
     preload: function(){
         backgroundMusic.stop();
+        stepSound.stop();
     },
     create: function() {
         var menu_background = this.add.image(0,0, 'Menu_Background');
