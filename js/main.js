@@ -1033,13 +1033,7 @@ GameStateHandler.Stage1.prototype = {
         }
 
         if(keys.clear()){
-<<<<<<< HEAD
-=======
-            for(var i = 0; i < prisonerArray.length; i++){
-                prisonerArray[i].TEMPTHING.kill();
-            }
             backgroundMusic.stop();
->>>>>>> 72d49cb6a6a95a83a5e280ab2924f5e86ea32524
             game.state.start("Stage2");
         }
 
