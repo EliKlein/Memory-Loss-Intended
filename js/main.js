@@ -817,7 +817,7 @@ GameStateHandler.Preloader.prototype = {
         this.load.image('Menu_Background', 'Menu_Background.png');
         this.load.image('button', 'grey_button.png');
         this.load.bitmapFont('font_game', "font_game.png", "font_game.fnt")
-        this.load.audio('menu',['menumusic.mp3']);
+        this.load.audio('menu',['menuMusic2.ogg']);
 
         //BGM2 IS SECOND STAGE MUSIC ... they're both the same now, but we can change it and whatever...
         this.load.audio('bgm',['bgm4.ogg']);
