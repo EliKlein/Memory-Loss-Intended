@@ -387,10 +387,10 @@ class Guard{
         if(this.light.visible(player)){
             this.psSprite.reset(this.sprite.x, this.sprite.y-40);
             if(this.timer == null){
-                alertSound.play('', 0, 0.5, false,false);
+                alertSound.play('', 0, 0.20, false,false);
                 this.timer = game.time.now;
             } else if (game.time.now - this.timer > 1000){
-                deadSound.play('', 0, 0.5, false, false);
+                deadSound.play('', 0, 0.20, false, false);
                 gameOverTip = "You were seen by a guard!"
                 game.state.start("GameOver")
             }
@@ -486,10 +486,10 @@ class CameraEnemy{
         if(this.light.visible(player) || seen){
             this.psSprite.reset(this.sprite.x, this.sprite.y);
             if(this.timer2 == null){
-                alertSound.play('', 0, 0.5, false,false);
+                alertSound.play('', 0, 0.2, false,false);
                 this.timer2 = game.time.now;
             } else if (game.time.now - this.timer2 > 1000){
-                deadSound.play('', 0, 0.5, false, false);
+                deadSound.play('', 0, 0.2, false, false);
                 gameOverTip = "Your group was seen by a camera! Make sure you don't lead your friends into view of the cameras either. You can see where they're pointing when you look at them."
                 game.state.start("GameOver");
             }
@@ -861,7 +861,7 @@ GameStateHandler.Preloader.prototype = {
         this.load.audio('menu',['menuMusic2.ogg']);
 
         //BGM2 IS SECOND STAGE MUSIC ... they're both the same now, but we can change it and whatever...
-        this.load.audio('bgm',['bgm4.ogg']);
+        this.load.audio('bgm',['bgm1.ogg']);
         this.load.audio('bgm2',['bgm4.ogg']);
 
 
@@ -934,7 +934,7 @@ GameStateHandler.Menu.prototype = {
         button_options.anchor.setTo(0.5, 0.5);
         textopt = game.add.bitmapText(button_options.x, button_options.y, "font_game", 'HELP', 20);
         textopt.anchor.setTo(0.5, 0.5);
-        if(!menuMusic.isPlaying) menuMusic.play('', 0, 0.25, true);
+        if(!menuMusic.isPlaying) menuMusic.play('', 0, 0.15, true);
     },
     update: function() {
         if(button_play.input.pointerOver()) {
