@@ -65,7 +65,7 @@ class KeyBinds{
 
 class Player{
     constructor(x, y){
-        this.light = new LightSource(this, 225, 55, 26);
+        this.light = new LightSource(this, 250, 50, 26);
         //Creating the player sprite
         var player = game.add.sprite(x, y, 'player');
         //Setting up the sprite as a physical body in Arcade Physics Engine
@@ -439,7 +439,7 @@ class Guard{
 }
 class CameraEnemy{
     constructor(xSpawn, ySpawn, arcStart, arcEnd){
-        this.light = new LightSource(this, 225, 40, 8);
+        this.light = new LightSource(this, 200, 45, 8);
         this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
         this.sprite.anchor.setTo(0.5, 0.5);
         this.sprite.angle = arcStart;
@@ -620,8 +620,25 @@ function makeMap(ref, bg) {
 
 function makeCameras(){
     camerasGroup = game.add.group();
-    new CameraEnemy(510, 60, 0, 90);
-    new CameraEnemy(48, 48, 80, 100);
+    /*new CameraEnemy(510, 60, 0, 90);
+    new CameraEnemy(48, 48, 80, 100);*/
+    new CameraEnemy(144, 48, 15, 120);
+    new CameraEnemy(240, 848, 15, 165);
+    new CameraEnemy(432, 432, 30, 60);
+    new CameraEnemy(432, 752, 30, 60);
+    new CameraEnemy(688, 48, 15, 165);
+    new CameraEnemy(688, 240, 15, 165);
+    new CameraEnemy(816, 752, 120, 150);
+    new CameraEnemy(976, 624, 60, 165);
+    new CameraEnemy(1040, 432, 45, 135);
+    new CameraEnemy(1136, 912, -75, 75);
+    new CameraEnemy(1456, 48, 15, 165);
+    new CameraEnemy(1456, 240, 15, 165);
+    new CameraEnemy(1488, 624, 15, 165);
+    new CameraEnemy(1552, 432, 15, 150);
+    new CameraEnemy(1552, 880, 15, 165);
+    new CameraEnemy(2000, 208, 105, 165);
+
 }
 
 function makeEnemies(){
@@ -965,7 +982,7 @@ GameStateHandler.Options_Screen.prototype = {
         var Menu_backGround = this.add.image(0,0, 'Menu_Background');
         Menu_backGround.alpha = 0.35;
         game_controls = "Controls:\n\tUse the ARROW KEYS or WASD to move.\n\tWhile standing still, use the MOUSE to aim your flashlight.\n\t" +
-                        "Walk into prisoners to talk to them.\n\tAfter a prisoner or two is with you, ENTER or SPACEBAR will call them over.";
+                        "Walk into prisoners to talk to them.\n\tAfter reaching stage two, ENTER or SPACEBAR will call prisoners to you.\n\tIn stage two, bring prisoners to their computers!";
         game_description = "Info:\n\tYou're trapped in a strange cyber prison where nobody can tell who's who. You know some of your friends are trapped here too, but " +
                            "there are also disguised cyber guards who are impersonating them! You need to find out who's a guard and who's a friend, doing your best to " +
                            "verify which people truly did get scammed and sent here, and which are making their stories up. Oh, and be careful of cameras and guards-- " +
@@ -1098,6 +1115,16 @@ GameStateHandler.Stage2.prototype = {
         game.time.advancedTiming = true;
         game.physics.startSystem(Phaser.Physics.ARCADE);
         map = makeMap("map2", 'Background2');
+
+        for(var i = 0; i < map.width; i++){
+            for(var j = 0; j < map.height; j++){
+                if(map.getTile(i, j) != null){
+                    if(map.getTile(i, j).index == 1 || map.getTile(i, j).index == 2){
+                        console.log("x: " + ((i*32)+16) + " y: " + ((j*32)+16));
+                    }
+                }
+            }
+        }
 
         cameraArray = [];
 
