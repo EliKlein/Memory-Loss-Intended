@@ -24,9 +24,9 @@ var prisonerStoryList;
 var gameOverTip = "";
 var stepSound, alertSound, deadSound, menuMusic, backgroundMusic;
 
-var debuggingSecondStage = true;
+var debuggingSecondStage = false;
 var guardsHidden = false;
-var camerasHidden = false;
+var camerasHidden = true;
 
 class KeyBinds{
     constructor(){
