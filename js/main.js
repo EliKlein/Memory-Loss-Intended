@@ -1159,7 +1159,7 @@ GameStateHandler.Stage1.prototype = {
             }
         }
 
-        if(keys.clear()){
+        if(keys.clear() && debuggingSecondStage){
             game.state.start("Stage2");
         }
 
