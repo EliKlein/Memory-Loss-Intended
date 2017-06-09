@@ -1,5 +1,5 @@
 var GameStateHandler = {};
-var game = new Phaser.Game(1024, 576, Phaser.AUTO);
+var game = new Phaser.Game(1024*2.5, 576*2, Phaser.AUTO);
 var map;
 var lightTexture;
 var lightSprite;
@@ -10,6 +10,8 @@ var hintStyle;
 var names = ["Prisoner"];
 var prisonersGroup;
 var prisonerArray;
+var computersGroup;
+var computerArray;
 var enemiesGroup;
 var enemiesArray;
 var camerasGroup;
@@ -22,8 +24,9 @@ var prisonerStoryList;
 var gameOverTip = "";
 var stepSound, alertSound, deadSound, menuMusic, backgroundMusic;
 
+var debuggingSecondStage = true;
 var guardsHidden = false;
-var camerasHidden = true;
+var camerasHidden = false;
 
 class KeyBinds{
     constructor(){
@@ -221,6 +224,7 @@ class Prisoner{
         this.sprite.body.immovable = true;
 
         this.accepted = false;
+        this.free = true;//'am I already going to or at a computer? if not, I'm free'
 
         this.story = prisonerStoryList.getRandom();
         this.name = names[Math.floor(Math.random()*names.length)]
@@ -318,26 +322,30 @@ class Prisoner{
         this.stopText();
     }
     followPlayer(){
-        if(this.index != -1){
-            this.path = findPath(this.sprite.x, this.sprite.y, player.sprite.x, player.sprite.y, map);
-            if(this.path.length > 0){
-                //pathing http://www.html5gamedevs.com/topic/6569-move-a-sprite-along-a-path/
-                //turns out the way they do it there is pretty shit in a lot of ways
-                var p = this.path.shift();
-                this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
-                this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 10, null, false, this.index * 200);
-                var temp = function(){
-                    if(this.path.length > 0){
-                        var p = this.path.shift();
-                        this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
-                        this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 10);
-                        this.tween.onComplete.addOnce(temp, this);
-                        this.tween.start();
-                    }
+        if(this.index != -1 && this.free){
+            if(this.tween)this.tween.stop();
+            this.path = findPath(this.sprite.x, this.sprite.y, player.sprite.x, player.sprite.y);
+            this.doPath();
+        }
+    }
+    doPath(){
+        if(this.path.length > 0){
+            //pathing http://www.html5gamedevs.com/topic/6569-move-a-sprite-along-a-path/
+            //turns out the way they do it there is pretty shit in a lot of ways
+            var p = this.path.shift();
+            this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
+            this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 10, null, false, this.index * 200);
+            var temp = function(){
+                if(this.path.length > 0){
+                    var p = this.path.shift();
+                    this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
+                    this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 10);
+                    this.tween.onComplete.addOnce(temp, this);
+                    this.tween.start();
                 }
-                this.tween.onComplete.addOnce(temp, this);
-                this.tween.start();
             }
+            this.tween.onComplete.addOnce(temp, this);
+            this.tween.start();
         }
     }
     getX(){
@@ -358,6 +366,31 @@ class Prisoner{
         this.sprite.anchor.setTo(0.5, 0.5);
         this.sprite.scale.setTo(0.45);
         this.sprite.body.immovable = true;
+    }
+}
+
+class Computer{
+    constructor(x, y){
+        this.sprite = game.add.sprite(x, y, "computer");
+        game.physics.arcade.enable(this.sprite);
+        this.sprite.body.immovable = true;
+        computersGroup.add(this.sprite);
+        computerArray.push(this);
+        
+        this.free = true;
+    }
+    check(prisoner){
+        if(this.free){
+            var path = findPath(prisoner.getX(), prisoner.getY(), this.sprite.x, this.sprite.y, map);
+            if(path.length < 3){
+                this.free = false;
+                prisoner.free = false;
+                prisoner.tween.stop();
+                prisoner.path = path;
+                prisoner.path.push({x:this.sprite.x, y:this.sprite.y});
+                prisoner.doPath();
+            }
+        }
     }
 }
 class Guard{
@@ -438,24 +471,39 @@ class Guard{
 
 }
 class CameraEnemy{
-    constructor(xSpawn, ySpawn, arcStart, arcEnd){
+    constructor(x, y, arcStart, arcEnd){
         this.light = new LightSource(this, 200, 45, 8);
-        this.sprite = game.add.sprite(xSpawn, ySpawn, "camera");
+        this.sprite = camerasGroup.create(x, y, "camera");
         this.sprite.anchor.setTo(0.5, 0.5);
-        this.sprite.angle = arcStart;
+        this.sprite.angle = arcEnd;
 
-        this.speed = 1/150;
+        if(arcStart == arcEnd) this.speed = 0;
+        else this.speed = 1/150;
 
-        this.state = (arcEnd - arcStart)*this.speed;
+        this.state = 0;
         this.arcStart = arcStart;
         this.arcEnd = arcEnd;
-        this.timer1 = 0;
+        this.timer1 = Math.random()*150;
 
         cameraArray.push(this);
 
         this.timer2 = null;
+
+        if(debuggingSecondStage){
+            this.myNumber = cameraArray.length;
+            this.style = {
+                font: "32px Helvetica",
+                strokeThickness:2,
+                fill:"rgb(255, 255, 255)",
+                stroke:"rgb(0,0,0)",
+            };
+        }
     }
     update(){
+        if(debuggingSecondStage && this.myText == undefined){
+            this.myText = game.add.text(this.sprite.x, this.sprite.y, ""+this.myNumber, this.style);
+            this.myText.anchor.setTo(0.5, 0.5);
+        }
         if(this.psSprite == undefined){
             this.psSprite = game.add.sprite(0, 0, "seen");
             this.psSprite.anchor.setTo(0.5, 0.5);
@@ -486,9 +534,9 @@ class CameraEnemy{
         if(this.light.visible(player) || seen){
             this.psSprite.reset(this.sprite.x, this.sprite.y);
             if(this.timer2 == null){
-                alertSound.play('', 0, 0.5, false,false);
+                if(!debuggingSecondStage) alertSound.play('', 0, 0.5, false,false);
                 this.timer2 = game.time.now;
-            } else if (game.time.now - this.timer2 > 1000){
+            } else if (game.time.now - this.timer2 > 1000 && !debuggingSecondStage){
                 deadSound.play('', 0, 0.5, false, false);
                 gameOverTip = "Your group was seen by a camera! Make sure you don't lead your friends into view of the cameras either. You can see where they're pointing when you look at them."
                 game.state.start("GameOver");
@@ -595,6 +643,15 @@ class LightSource{
     }
 }
 
+function stopSounds(){
+    menuMusic.stop();
+    backgroundMusic1.stop();
+    backgroundMusic2.stop();
+    stepSound.stop();
+    alertSound.stop();
+    deadSound.stop();
+}
+
 function doLights(){
     lightTexture.context.fillStyle = "rgba(0, 0, 0, 0.95)";
     lightTexture.context.strokeStyle = 'rgba(255, 255, 255, 0.0)'
@@ -620,24 +677,22 @@ function makeMap(ref, bg) {
 
 function makeCameras(){
     camerasGroup = game.add.group();
-    /*new CameraEnemy(510, 60, 0, 90);
-    new CameraEnemy(48, 48, 80, 100);*/
-    new CameraEnemy(144, 48, 15, 120);
-    new CameraEnemy(240, 848, 15, 165);
-    new CameraEnemy(432, 432, 30, 60);
-    new CameraEnemy(432, 752, 30, 60);
-    new CameraEnemy(688, 48, 15, 165);
-    new CameraEnemy(688, 240, 15, 165);
-    new CameraEnemy(816, 752, 120, 150);
-    new CameraEnemy(976, 624, 60, 165);
-    new CameraEnemy(1040, 432, 45, 135);
-    new CameraEnemy(1136, 912, -75, 75);
-    new CameraEnemy(1456, 48, 15, 165);
-    new CameraEnemy(1456, 240, 15, 165);
-    new CameraEnemy(1488, 624, 15, 165);
-    new CameraEnemy(1552, 432, 15, 150);
-    new CameraEnemy(1552, 880, 15, 165);
-    new CameraEnemy(2000, 208, 105, 165);
+    new CameraEnemy(144, 48, 15, 120);//1
+    new CameraEnemy(240, 944, -165, -15);//2
+    new CameraEnemy(432, 432, 15, 75);//3
+    new CameraEnemy(432, 806, -15, 75);//4
+    new CameraEnemy(688, 48, 15, 165);//5
+    new CameraEnemy(688, 240, 10, 95);//6
+    new CameraEnemy(816, 752, 170, 170);//7
+    new CameraEnemy(976, 624, 50, 165);//8
+    new CameraEnemy(1040, 432, 45, 135);//9
+    new CameraEnemy(1136, 912, -75, 75);//10
+    new CameraEnemy(1456, 48, 15, 165);//11
+    new CameraEnemy(1456, 240, 75, 170);//12
+    new CameraEnemy(1488, 624, 15, 165);//13
+    new CameraEnemy(1552, 432, 40, 165);//14
+    new CameraEnemy(1552, 880, 60, 165);//15
+    new CameraEnemy(2000, 208, 105, 165);//16
 
 }
 
@@ -728,7 +783,7 @@ function showText(player, prisoner){
     findContainingObject(prisoner, prisonerArray).showText();
 }
 
-function findPath(worldSX, worldSY, worldEX, worldEY, map){
+function findPath(worldSX, worldSY, worldEX, worldEY){
     var start = worldPosToTilePos(worldSX, worldSY, map);
     start.gScore = 0;
     start.from = {x:start.x, y:start.y};
@@ -758,7 +813,7 @@ function findPath(worldSX, worldSY, worldEX, worldEY, map){
             }
             return path;
         }
-        adj = adjacentTiles(curr, map, explored);
+        adj = adjacentTiles(curr, explored);
         for(var i = 0; i < adj.length; i++){
             var insert = true;
             for(var j = 0; j < exploring.length; j++){
@@ -789,7 +844,7 @@ function findPath(worldSX, worldSY, worldEX, worldEY, map){
     return [];
 }
 
-function adjacentTiles(tile, map, explored){
+function adjacentTiles(tile, explored){
     var ret = [];
     //make sure each adjacent tile is within the bounds of the map, not a wall, and hasn't been explored, before adding it to return values
     if(tile.x + 1 < map.width && map.getTile(tile.x+1, tile.y) == null && explored[tile.y][tile.x+1] == null)
@@ -801,13 +856,13 @@ function adjacentTiles(tile, map, explored){
     if(tile.y - 1 >= 0 && map.getTile(tile.x, tile.y-1) == null && explored[tile.y-1][tile.x] == null)
         ret.push({gScore:tile.gScore+1, x:tile.x, y:tile.y-1});
     //diagonals
-    if(tile.x - 1 >= 0 && tile.y - 1 >=0 && map.getTile(tile.x-1, tile.y-1) == null && explored[tile.y-1][tile.x-1] == null)
+    if(tile.x - 1 >= 0 && tile.y - 1 >=0 && map.getTile(tile.x-1, tile.y-1) == null && map.getTile(tile.x-1, tile.y) == null && map.getTile(tile.x, tile.y-1) == null && explored[tile.y-1][tile.x-1] == null)
         ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x-1, y:tile.y-1});
-    if(tile.x - 1 >= 0 && tile.y + 1 < map.height && map.getTile(tile.x-1, tile.y+1) == null && explored[tile.y+1][tile.x-1] == null)
+    if(tile.x - 1 >= 0 && tile.y + 1 < map.height && map.getTile(tile.x-1, tile.y+1) == null && map.getTile(tile.x-1, tile.y) == null && map.getTile(tile.x, tile.y+1) == null && explored[tile.y+1][tile.x-1] == null)
         ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x-1, y:tile.y+1});
-    if(tile.x + 1 < map.width && tile.y - 1 >=0 && map.getTile(tile.x+1, tile.y-1) == null && explored[tile.y-1][tile.x+1] == null)
+    if(tile.x + 1 < map.width && tile.y - 1 >=0 && map.getTile(tile.x+1, tile.y-1) == null && map.getTile(tile.x+1, tile.y) == null && map.getTile(tile.x, tile.y-1) == null && explored[tile.y-1][tile.x+1] == null)
         ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x+1, y:tile.y-1});
-    if(tile.x + 1 < map.width && tile.y + 1 < map.height && map.getTile(tile.x+1, tile.y+1) == null && explored[tile.y+1][tile.x+1] == null)
+    if(tile.x + 1 < map.width && tile.y + 1 < map.height && map.getTile(tile.x+1, tile.y+1) == null &&map.getTile(tile.x+1, tile.y) == null &&map.getTile(tile.x, tile.y+1) == null && explored[tile.y+1][tile.x+1] == null)
         ret.push({gScore:tile.gScore+Math.sqrt(2), x:tile.x+1, y:tile.y+1});
     return ret;
 }
@@ -857,40 +912,60 @@ GameStateHandler.Preloader = function() {};
 GameStateHandler.Preloader.prototype = {
     preload: function() {
         console.log('Preloader: preload');
-        //Loading into Asset cache
+        //using this area for loading all assets
+
+        //setting path for loads to assets, since loading is for assets :thinking:
         this.load.path = 'assets/';
-        //adding background
-        this.load.image('Background1', 'FloorBackgroundBigger.png');
-        this.load.image('Background2', 'FloorBackgroundVertical.png');
-        this.load.image('prisoner', 'prisoner1.png');
-        this.load.image('seen', 'Seen.png');
-        this.load.spritesheet('accept', 'acceptBtn.png', 125, 50);
-        this.load.spritesheet('deny', 'denyBtn.png', 125, 50);
+
+        //in-game objects
         this.load.atlas('player', 'atlas.png', 'atlas.json');
+        this.load.image('prisoner', 'prisoner1.png');//uhhhhhhh
+        this.load.atlas('Prisoner', 'PTest.png', 'PTest.json');//which one of these are we using?
+        this.load.image('computer' , 'computer.png');
         this.load.atlas('guard', 'guard.png', 'guards.json');
         this.load.image('camera', 'Camera.png');
-        this.load.tilemap('map', 'GameMap.json', null, Phaser.Tilemap.TILED_JSON); //Loding the map with tiles
-        this.load.tilemap('map2', 'GameMapStage2.json', null, Phaser.Tilemap.TILED_JSON); //Loding the map with tiles
-        this.load.atlas('Prisoner', 'PTest.png', 'PTest.json');
+        this.load.image('seen', 'Seen.png');//except this, this is just the sprite for when something sees you
+
+        //for prisoner stories
+        this.load.spritesheet('accept', 'acceptBtn.png', 125, 50);
+        this.load.spritesheet('deny', 'denyBtn.png', 125, 50);
+
+        //map-related loads
+        this.load.tilemap('map', 'GameMap.json', null, Phaser.Tilemap.TILED_JSON);
+        this.load.tilemap('map2', 'GameMapStage2.json', null, Phaser.Tilemap.TILED_JSON);
+        this.load.image('Background1', 'FloorBackgroundBigger.png');
+        this.load.image('Background2', 'FloorBackgroundVertical.png');
+        
+        //menu-related loads
         this.load.image('Menu_Background', 'Menu_Background.png');
         this.load.image('button', 'grey_button.png');
         this.load.bitmapFont('font_game', "font_game.png", "font_game.fnt")
         this.load.audio('menu',['menumusic.mp3']);
 
+        //music
         //BGM2 IS SECOND STAGE MUSIC ... they're both the same now, but we can change it and whatever...
         this.load.audio('bgm',['bgm4.ogg']);
         this.load.audio('bgm2',['bgm4.ogg']);
 
-
+        //in-game sounds
         this.load.audio('steps',['steps.ogg']);
         this.load.audio('alert',['alert2.mp3']);
         this.load.audio('dead',['alert1.mp3'])
 
-        prisonerStoryList = new StoryList();
     },
     create: function() {
         console.log('Preloader: create');
+        //using this area to set up the things we need globally set up
         keys = new KeyBinds(); //set up keyboard input
+        prisonerStoryList = new StoryList(); //create story list for choosing story objects from
+
+        //set up music vars
+        menuMusic = game.add.audio('menu');
+        backgroundMusic1 = game.add.audio('bgm');
+        backgroundMusic2 = game.add.audio('bgm2');
+        stepSound = game.add.audio('steps');
+        alertSound = game.add.audio('alert');
+        deadSound = game.add.audio('dead');
     },
     update: function() {
         this.state.start('Menu');
@@ -938,20 +1013,21 @@ GameStateHandler.Menu = function() {
 };
 GameStateHandler.Menu.prototype = {
     preload: function() {
-        if(menuMusic == undefined)menuMusic = game.add.audio('menu');
+        if(!menuMusic.isPlaying) menuMusic.play('', 0, 0.25, true);
     },
     create: function() {
-        var Menu_backGround = this.add.image(0,0, 'Menu_Background');
-        Menu_backGround.alpha = 0.35;
+        var menuBackground = this.add.image(0,0, 'Menu_Background');
+        menuBackground.alpha = 0.35;
+
         button_play = game.add.button(game.width/2, 200, 'button', this.actionOnClickplay, this);
         button_play.anchor.setTo(0.5, 0.5);
         textplay = game.add.bitmapText(button_play.x, button_play.y, "font_game", 'PLAY', 20);
         textplay.anchor.setTo(0.5, 0.5);
+
         button_options = game.add.button(game.width/2, 250, 'button',  this.actionOnClickopt, this);
         button_options.anchor.setTo(0.5, 0.5);
         textopt = game.add.bitmapText(button_options.x, button_options.y, "font_game", 'HELP', 20);
         textopt.anchor.setTo(0.5, 0.5);
-        if(!menuMusic.isPlaying) menuMusic.play('', 0, 0.25, true);
     },
     update: function() {
         if(button_play.input.pointerOver()) {
@@ -1014,10 +1090,8 @@ GameStateHandler.Stage1.prototype = {
         console.log('Stage1: preload');
         game.load.image('tiles', 'Tiles.png'); //loading tileset image
         prisonerStoryList.reset();
-        backgroundMusic = game.add.audio('bgm');
-        stepSound = game.add.audio('steps');
-        alertSound = game.add.audio('alert');
-        deadSound = game.add.audio('dead');
+        stopSounds();
+        backgroundMusic1.play('', 0, 0.25, true);
     },
     create: function() {
         console.log('Stage1: create');
@@ -1061,8 +1135,6 @@ GameStateHandler.Stage1.prototype = {
         for(var i = 0; i < prisonerArray.length; i++){
             prisonerArray[i].makeText();
         }
-
-        backgroundMusic.play('', 0, 0.25, true);
     },
     update: function() {
         if(stageComplete()){
@@ -1104,11 +1176,8 @@ GameStateHandler.Stage2 = function() {
 GameStateHandler.Stage2.prototype = {
     preload: function() {
         console.log('Stage2: preload');
-        backgroundMusic.stop();
-        backgroundMusic = game.add.audio('bgm2');
-        stepSound = game.add.audio('steps');
-        alertSound = game.add.audio('alert');
-        deadSound = game.add.audio('dead');
+        stopSounds();
+        backgroundMusic2.play('', 0, 0.25, true);
     },
     create: function() {
         console.log('Stage2: create');
@@ -1127,8 +1196,10 @@ GameStateHandler.Stage2.prototype = {
         }
 
         cameraArray = [];
+        computerArray = [];
 
         //creating cameras
+        camerasGroup = game.add.group();
         if(camerasHidden) makeCameras();
 
         //creating texture for shadows/light
@@ -1137,6 +1208,14 @@ GameStateHandler.Stage2.prototype = {
         lightSprite.blendMode = Phaser.blendModes.MULTIPLY;
 
         if(!camerasHidden) makeCameras();
+
+        computersGroup = game.add.group();
+        new Computer(128, 320);
+        new Computer(128, 640);
+        new Computer(512, 320);
+        new Computer(640, 864);
+        new Computer(1568, 320);
+        new Computer(1760, 992);
 
         //remake prisoners in their group and such
         prisonersGroup = game.add.group();
@@ -1162,27 +1241,40 @@ GameStateHandler.Stage2.prototype = {
         for(var i = 0; i < prisonerArray.length; i++){
             prisonerArray[i].makeText();
         }
-
-        backgroundMusic.play('', 0, 0.25, true);
     },
     update: function() {
         game.physics.arcade.collide(player.sprite, groundLayer);
         game.physics.arcade.collide(player.sprite, camerasGroup);
+        game.physics.arcade.collide(player.sprite, computersGroup);
 
         for(var i = 0; i < cameraArray.length; i++){
             cameraArray[i].update();
         }
+        var win = true;
+        for(var i = 0; i < prisonerArray.length; i++){
+            if(prisonerArray[i].free){
+                win = false;
+                for(var j = 0; j < computerArray.length; j++){
+                    computerArray[j].check(prisonerArray[i]);
+                }
+            }
+        }
+        if(win && this.wonAlready == undefined){
+            console.log("YOU WIN!");
+            this.wonAlready = true;
+        }
+        
 
         lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
-        /*if(camerasHidden) doLights(player);
-        else doLights(player, cameraArray);*/
-        
-        //show lights just for cameras in sight
-        var camsInSight = [];
-        for(var i = 0; i < cameraArray.length; i++){
-            if(player.light.visible(cameraArray[i])) camsInSight.push(cameraArray[i]);
-        }
-        doLights(player, camsInSight);
+               
+        //show lights just for cameras in sight (if they're hidden, otherwise show all lights)
+        if(camerasHidden){
+            var camsInSight = [];
+            for(var i = 0; i < cameraArray.length; i++){
+                if(player.light.visible(cameraArray[i])) camsInSight.push(cameraArray[i]);
+            }
+            doLights(player, camsInSight);
+        } else doLights(player, cameraArray);
         
         if(keys.call()){
             for(var i = 0; i < prisonerArray.length; i++){
@@ -1197,8 +1289,7 @@ GameStateHandler.GameOver = function() {
 };
 GameStateHandler.GameOver.prototype = {
     preload: function(){
-        backgroundMusic.stop();
-        stepSound.stop();
+        stopSounds();
     },
     create: function() {
         var menu_background = this.add.image(0,0, 'Menu_Background');
