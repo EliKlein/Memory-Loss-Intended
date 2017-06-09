@@ -1,5 +1,5 @@
 var GameStateHandler = {};
-var game = new Phaser.Game(1024*2.5, 576*2, Phaser.AUTO);
+var game = new Phaser.Game(1024, 576, Phaser.AUTO);
 var map;
 var lightTexture;
 var lightSprite;
