@@ -109,7 +109,7 @@ class Player{
             }
         }
         if (keys.direction()) {
-            stepSound.play('', 0.25, 0.75, false, false);//plays stepping sounds
+            stepSound.play('', 0.25, 0.5, false, false);//plays stepping sounds
             this.sprite.angle = Math.atan(this.sprite.body.velocity.y / this.sprite.body.velocity.x) * 180 / Math.PI;
             if (this.sprite.body.velocity.x < 0) this.sprite.angle += 180;
         } else {
@@ -387,10 +387,10 @@ class Guard{
         if(this.light.visible(player)){
             this.psSprite.reset(this.sprite.x, this.sprite.y-40);
             if(this.timer == null){
-                alertSound.play('', 0, 0.20, false,false);
+                alertSound.play('', 0, 0.2, false,false);
                 this.timer = game.time.now;
             } else if (game.time.now - this.timer > 1000){
-                deadSound.play('', 0, 0.20, false, false);
+                deadSound.play('', 0, 0.2, false, false);
                 gameOverTip = "You were seen by a guard!"
                 game.state.start("GameOver")
             }
