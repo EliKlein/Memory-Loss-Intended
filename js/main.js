@@ -70,7 +70,7 @@ class KeyBinds{
 
 class Player{
     constructor(x, y){
-        this.light = new LightSource(this, 250, 50, 26);
+        this.light = new LightSource(this, 250, 50, 22);
         //Creating the player sprite
         var player = game.add.sprite(x, y, 'player');
         //Setting up the sprite as a physical body in Arcade Physics Engine
