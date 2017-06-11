@@ -18,8 +18,7 @@ var camerasGroup;
 var cameraArray;
 var player;
 var PLAYER_SPEED = 150;
-var randomX;
-var randomY;
+var firstFreePrisoner;
 var prisonerStoryList;
 var gameOverTip = "";
 var stepSound, alertSound, deadSound, menuMusic, backgroundMusic;
@@ -27,6 +26,9 @@ var stepSound, alertSound, deadSound, menuMusic, backgroundMusic;
 var debuggingSecondStage = false;
 var guardsHidden = false;
 var camerasHidden = true;
+var behind = false; //whether the prisoners will follow slightly behind the player or go directly to them
+
+var stageFrom;
 
 class KeyBinds{
     constructor(){
@@ -235,7 +237,6 @@ class Prisoner{
         prisonerArray.push(this);
     }
     makeText(){
-
         this.background = game.add.graphics();
 
         this.text = game.add.text(0, 0, this.story.message, style);
@@ -323,28 +324,41 @@ class Prisoner{
     }
     followPlayer(){
         if(this.index != -1 && this.free){
-            if(this.tween)this.tween.stop();
-            this.path = findPath(this.sprite.x, this.sprite.y, player.sprite.x, player.sprite.y);
-            this.doPath();
+            if(this.tween && this.tween._hasStarted){
+                this.tween.stop();
+                this.path = findPath(this.sprite.x, this.sprite.y, player.sprite.x, player.sprite.y);
+                this.doPath(false);
+            } else {
+                //if I don't do this, and/or have the "timing" variable set to 0, you can spam press enter and the prisoners will start bugging out because
+                //it adds tweens without fully getting rid of the ones that are supposed to have stopped
+                if(this.tween && this.tween.isRunning) return;
+
+                this.path = findPath(this.sprite.x, this.sprite.y, player.sprite.x, player.sprite.y);
+                this.doPath(true);
+            }
         }
     }
-    doPath(){
+    doPath(delay){
         if(this.path.length > 0){
             //pathing http://www.html5gamedevs.com/topic/6569-move-a-sprite-along-a-path/
             //turns out the way they do it there is pretty shit in a lot of ways
+            var timing;
+            if(delay) timing = this.index * 200;
+            else timing = 15;
+
             var p = this.path.shift();
-            this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
-            this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 10, null, false, this.index * 200);
-            var temp = function(){
+            //this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
+            this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 8, null, false, timing);
+            var recur = function(){
                 if(this.path.length > 0){
                     var p = this.path.shift();
-                    this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
-                    this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 10);
-                    this.tween.onComplete.addOnce(temp, this);
+                    //this.previousPoint = {x: this.sprite.x, y: this.sprite.y};
+                    this.tween = game.add.tween(this.sprite).to(p, distance(p.x, p.y, this.sprite.x, this.sprite.y) * 8);
+                    this.tween.onComplete.addOnce(recur, this);
                     this.tween.start();
                 }
             }
-            this.tween.onComplete.addOnce(temp, this);
+            this.tween.onComplete.addOnce(recur, this);
             this.tween.start();
         }
     }
@@ -380,20 +394,27 @@ class Computer{
         
         this.free = true;
     }
-    check(prisoner){
-        if(this.free){
+    check(index){
+        var prisoner = prisonerArray[index];
+        if(this.free && prisoner.free){//I don't think the second condition is ever going to be false, because of the location I'm calling this from, but might as well check
             var path = findPath(prisoner.getX(), prisoner.getY(), this.sprite.x, this.sprite.y, map);
             if(path.length < 3){
                 this.free = false;
                 prisoner.free = false;
+                index++;
+                for(var i = index; i < prisonerArray.length; i++){
+                    prisonerArray[i].index = i - index;
+                }
                 prisoner.tween.stop();
                 prisoner.path = path;
-                prisoner.path.push({x:this.sprite.x, y:this.sprite.y});
-                prisoner.doPath();
+                if(behind)prisoner.path.push({x:this.sprite.x, y:this.sprite.y});
+                prisoner.doPath(false);
             }
         }
+        return index;
     }
 }
+
 class Guard{
     constructor(x, y){
         this.sprite = enemiesGroup.create(x, y, 'guard');
@@ -477,6 +498,7 @@ class Guard{
     }
 
 }
+
 class CameraEnemy{
     constructor(x, y, arcStart, arcEnd){
         this.light = new LightSource(this, 200, 45, 8);
@@ -695,7 +717,7 @@ function makeCameras(){
     new CameraEnemy(688, 240, 10, 95);//6
     new CameraEnemy(816, 752, 170, 170);//7
     new CameraEnemy(976, 624, 50, 165);//8
-    new CameraEnemy(1040, 432, 45, 135);//9
+    //new CameraEnemy(1040, 432, 45, 135);//9 // this one is just unfair... (if you go debug this, all the numbers ahead of this are 1 too high in the comments)
     new CameraEnemy(1136, 912, -75, 75);//10
     new CameraEnemy(1456, 48, 15, 165);//11
     new CameraEnemy(1456, 240, 75, 170);//12
@@ -777,18 +799,6 @@ function getWallIntersection(ray) {
     
 }
 
-function getRandomCoordinates(){            
-    var randX = Math.floor((Math.random() * game.world.width) + 1);            
-    var randY = Math.floor((Math.random() * game.world.height) + 1);            
-    if(map.getTile(randX, randY) != null){                
-        getRandomCoordinates();            
-    }else{                
-        randomX = randX;                
-        randomY = randY;                
-        return;            
-    }        
-}
-
 function showText(player, prisoner){
     findContainingObject(prisoner, prisonerArray).showText();
 }
@@ -821,6 +831,7 @@ function findPath(worldSX, worldSY, worldEX, worldEY){
                 path[i].x = (path[i].x * 32) + 16;
                 path[i].y = (path[i].y * 32) + 16;
             }
+            if(!behind) path.push({x:worldEX, y:worldEY});
             return path;
         }
         adj = adjacentTiles(curr, explored);
@@ -1034,25 +1045,16 @@ GameStateHandler.Menu.prototype = {
         textplay = game.add.bitmapText(button_play.x, button_play.y, "font_game", 'PLAY', 20);
         textplay.anchor.setTo(0.5, 0.5);
 
-        button_options = game.add.button(game.width/2, 250, 'button',  this.actionOnClickopt, this);
+        button_options = game.add.button(game.width/2, button_play.y + button_play.height + 20, 'button',  this.actionOnClickopt, this);
         button_options.anchor.setTo(0.5, 0.5);
         textopt = game.add.bitmapText(button_options.x, button_options.y, "font_game", 'HELP', 20);
         textopt.anchor.setTo(0.5, 0.5);
         if(!menuMusic.isPlaying) menuMusic.play('', 0, 0.15, true);
 
+        stageFrom = 0;
+
     },
-    update: function() {
-        if(button_play.input.pointerOver()) {
-            textplay.fill = 'green';
-        } else {
-            textplay.fill = 'black';
-        }
-        if(button_options.input.pointerOver()) {
-            textopt.fill = 'green';
-        } else {
-            textopt.fill = 'black';
-        }
-    },
+    update: function() {},
     actionOnClickplay: function() {
         menuMusic.stop();
         this.state.start('Stage1');
@@ -1106,6 +1108,7 @@ GameStateHandler.Stage1.prototype = {
         backgroundMusic1.play('', 0, 0.25, true);
     },
     create: function() {
+        stageFrom = 1;
         console.log('Stage1: create');
         game.time.advancedTiming = true;
         game.physics.startSystem(Phaser.Physics.ARCADE);
@@ -1147,7 +1150,6 @@ GameStateHandler.Stage1.prototype = {
         for(var i = 0; i < prisonerArray.length; i++){
             prisonerArray[i].makeText();
         }
-        console.log(prisonerArray);
     },
     update: function() {
         if(stageComplete()){
@@ -1166,13 +1168,10 @@ GameStateHandler.Stage1.prototype = {
         lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
         doLights(player, enemiesArray);
 
-        if(keys.call()){
+        if(keys.call() && debuggingSecondStage){
             for(var i = 0; i < prisonerArray.length; i++){
-                prisonerArray[i].followPlayer();
+                prisonerArray[i].accepted = prisonerArray[i].story.truth;
             }
-        }
-
-        if(keys.clear() && debuggingSecondStage){
             game.state.start("Stage2");
         }
 
@@ -1239,6 +1238,7 @@ GameStateHandler.Stage2.prototype = {
         for(var i = 0; i < prisonerArray.length; i++){
             prisonerArray[i].stageTwo(i);
         }
+        console.log(prisonerArray);
 
         //create player
         player = new Player(100, 496);
@@ -1254,6 +1254,12 @@ GameStateHandler.Stage2.prototype = {
         for(var i = 0; i < prisonerArray.length; i++){
             prisonerArray[i].makeText();
         }
+
+        //return to this stage again if you lose and hit the retry button
+        stageFrom = 2;
+
+        //to keep track of how many prisoners have found their computers
+        firstFreePrisoner = 0;
     },
     update: function() {
         game.physics.arcade.collide(player.sprite, groundLayer);
@@ -1263,21 +1269,15 @@ GameStateHandler.Stage2.prototype = {
         for(var i = 0; i < cameraArray.length; i++){
             cameraArray[i].update();
         }
-        var win = true;
-        var index = 0;
-        for(var i = 0; i < prisonerArray.length; i++){
-            if(prisonerArray[i].free){
-                win = false;
-            } else if(i == index){
-                index++;
-            }
-        }
+        
+        
         for(var i = 0; i < computerArray.length; i++){
-            computerArray[i].check(prisonerArray[index]);
+            if(firstFreePrisoner >= prisonerArray.length) break;
+            firstFreePrisoner = computerArray[i].check(firstFreePrisoner);
         }
-        if(win && this.wonAlready == undefined){
-            console.log("YOU WIN!");
-            this.wonAlready = true;
+        if(firstFreePrisoner == prisonerArray.length){
+            console.log("You can now win by going to 'your' computer! ... crap we didn't do that");
+            firstFreePrisoner++; //just so it doesn't flood the log with this
         }
         
         lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
@@ -1295,12 +1295,13 @@ GameStateHandler.Stage2.prototype = {
             for(var i = 0; i < prisonerArray.length; i++){
                 prisonerArray[i].followPlayer();
             }
+            console.log(game.tweens);
         }
         player.update();
    }
 };
 GameStateHandler.GameOver = function() {
-    var button_restart, text_restart;
+    var button_menu, text_menu, button_retry, text_retry;
 };
 GameStateHandler.GameOver.prototype = {
     preload: function(){
@@ -1309,26 +1310,36 @@ GameStateHandler.GameOver.prototype = {
     create: function() {
         var menu_background = this.add.image(0,0, 'Menu_Background');
         menu_background.alpha = 0.35;
-        button_restart = game.add.button(game.width/2, game.height - 60, 'button', this.actionOnClickrestart, this);
-        button_restart.anchor.setTo(0.5, 0.5);
-        text_restart = game.add.bitmapText(button_restart.x, button_restart.y, 'font_game', 'PLAY AGAIN', 20);
-        text_restart.anchor.setTo(0.5, 0.5);
+        button_menu = game.add.button(game.width/2, game.height - 60, 'button', function() {
+            this.state.start('Menu');
+        }, this);
+        button_menu.anchor.setTo(0.5, 0.5);
+        text_menu = game.add.bitmapText(button_menu.x, button_menu.y, 'font_game', 'MAIN MENU', 20);
+        text_menu.anchor.setTo(0.5, 0.5);
+
+        button_retry = game.add.button(game.width/2, button_menu.y - button_menu.height - 20, 'button', function() {
+            if(stageFrom == 1){
+                this.state.start('Stage1');
+            } else if(stageFrom == 2){
+                for(var i = 0; i < prisonerArray.length; i++){
+                    prisonerArray[i].free = true;
+                }
+                this.state.start('Stage2');
+            } else{
+                console.log("something's broken");
+                this.state.start('Menu');
+            }
+        }, this);
+        button_retry.anchor.setTo(0.5, 0.5);
+        text_retry = game.add.bitmapText(button_retry.x, button_retry.y, 'font_game', 'TRY AGAIN?', 20);
+        text_retry.anchor.setTo(0.5, 0.5);
         
         game.add.bitmapText(game.width/2, 40, 'font_game', "Game Over!", 28).anchor.setTo(0.5, 0.5);
 
         gameOverTip = wordWrapBitmapText(gameOverTip, 10, 550);
         game.add.bitmapText(game.width/2, game.height/2, 'font_game', gameOverTip, 20).anchor.setTo(0.5, 0.5);
     },
-    update: function() {
-        if(button_restart.input.pointerOver()) {
-            text_restart.fill = 'green';
-        } else {
-            text_restart.fill = 'black';
-        }
-    },
-    actionOnClickrestart: function() {
-        this.state.start('Menu');
-    }
+    update: function() {}
 };
 game.state.add('Preloader', GameStateHandler.Preloader);
 game.state.add('Menu', GameStateHandler.Menu);
