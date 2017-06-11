@@ -217,8 +217,8 @@ class StoryList{
 }
 
 class Prisoner{
-    constructor(x, y) {
-        this.sprite = prisonersGroup.create(x, y, 'Prisoner');
+    constructor(x, y, frame) {
+        this.sprite = prisonersGroup.create(x, y, 'Prisoner', frame);
         this.sprite.anchor.setTo(0.5, 0.5);
         this.sprite.scale.setTo(0.45);
         this.sprite.body.immovable = true;
@@ -227,7 +227,7 @@ class Prisoner{
         this.free = true;//'am I already going to or at a computer? if not, I'm free'
 
         this.story = prisonerStoryList.getRandom();
-        this.name = names[Math.floor(Math.random()*names.length)]
+        this.name = frame;
 
         this.index = -1;
 
@@ -362,10 +362,11 @@ class Prisoner{
         var x = 64 + ((i%2)*64);
         var y = 448;
         if(i > 1) y += 64;
-        this.sprite = prisonersGroup.create(x, y, 'Prisoner');
+        this.sprite = prisonersGroup.create(x, y, 'Prisoner', this.name);
         this.sprite.anchor.setTo(0.5, 0.5);
         this.sprite.scale.setTo(0.45);
         this.sprite.body.immovable = true;
+        console.log(this);
     }
 }
 
@@ -423,7 +424,7 @@ class Guard{
                 alertSound.play('', 0, 0.2, false,false);
                 this.timer = game.time.now;
             } else if (game.time.now - this.timer > 1000){
-                deadSound.play('', 0, 0.2, false, false);
+                deadSound.play('', 0, 0.5, false, false);
                 gameOverTip = "You were seen by a guard!"
                 game.state.start("GameOver")
             }
@@ -534,17 +535,10 @@ class CameraEnemy{
         if(this.light.visible(player) || seen){
             this.psSprite.reset(this.sprite.x, this.sprite.y);
             if(this.timer2 == null){
-<<<<<<< HEAD
-                alertSound.play('', 0, 0.2, false,false);
-                this.timer2 = game.time.now;
-            } else if (game.time.now - this.timer2 > 1000){
-                deadSound.play('', 0, 0.2, false, false);
-=======
-                if(!debuggingSecondStage) alertSound.play('', 0, 0.5, false,false);
+                if(!debuggingSecondStage) alertSound.play('', 0, 0.2, false,false);
                 this.timer2 = game.time.now;
             } else if (game.time.now - this.timer2 > 1000 && !debuggingSecondStage){
-                deadSound.play('', 0, 0.5, false, false);
->>>>>>> e802f86b0fb352614a0f2f0373094a1a115730ff
+                deadSound.play('', 0, 0.2, false, false);
                 gameOverTip = "Your group was seen by a camera! Make sure you don't lead your friends into view of the cameras either. You can see where they're pointing when you look at them."
                 game.state.start("GameOver");
             }
@@ -1035,10 +1029,8 @@ GameStateHandler.Menu.prototype = {
         button_options.anchor.setTo(0.5, 0.5);
         textopt = game.add.bitmapText(button_options.x, button_options.y, "font_game", 'HELP', 20);
         textopt.anchor.setTo(0.5, 0.5);
-<<<<<<< HEAD
         if(!menuMusic.isPlaying) menuMusic.play('', 0, 0.15, true);
-=======
->>>>>>> e802f86b0fb352614a0f2f0373094a1a115730ff
+
     },
     update: function() {
         if(button_play.input.pointerOver()) {
@@ -1116,12 +1108,12 @@ GameStateHandler.Stage1.prototype = {
         //creating prisoners
         prisonersGroup = game.add.group();
         prisonersGroup.enableBody = true;
-        new Prisoner(80, 115);
-        new Prisoner(430, 475);
-        new Prisoner(940, 95);
-        new Prisoner(1245, 155);
-        new Prisoner(1300, 480);
-        new Prisoner(1960, 280);
+        new Prisoner(80, 115, 'Prisoner1');
+        new Prisoner(430, 475, 'Prisoner2');
+        new Prisoner(940, 95, 'Prisoner3');
+        new Prisoner(1245, 155, 'Prisoner4');
+        new Prisoner(1300, 480, 'Prisoner5');
+        new Prisoner(1960, 280, 'Prisoner6');
 
         //creating guards
         if(guardsHidden) makeEnemies();
@@ -1146,6 +1138,7 @@ GameStateHandler.Stage1.prototype = {
         for(var i = 0; i < prisonerArray.length; i++){
             prisonerArray[i].makeText();
         }
+        console.log(prisonerArray);
     },
     update: function() {
         if(stageComplete()){
