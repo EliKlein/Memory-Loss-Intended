@@ -418,6 +418,8 @@ class Guard{
         this.timer = null;
     }
     update(){
+        //check if the player is visible; if they are, start a timer...
+        //if the timer goes off, game over, but the timer gets closer and closer to reset as the player spends time out of sight
         if(this.light.visible(player)){
             this.psSprite.reset(this.sprite.x, this.sprite.y-40);
             if(this.timer == null){
@@ -432,8 +434,12 @@ class Guard{
             this.psSprite.kill();
             //if you were just seen, it should take less time than normal to notice you completely, but after a bit it'll reset.
             //I don't know why but 100 just seems like the right number after a bit of testing.
-            if(this.timer != null && this.timer < game.time.now) this.timer += 100;
-            else this.timer = null;
+            if(this.timer != null && this.timer < game.time.now){
+                this.timer += 100;
+            } else {
+                //IT'S HERE -- at this point, the guard is "reset" to the usual 1 second grace period. I'll also reformat the camera part slightly to match, if you want to do something there
+                this.timer = null;
+            }
         }
     }
     down(){
@@ -546,8 +552,11 @@ class CameraEnemy{
             this.psSprite.kill();
             //if you were just seen, it should take less time than normal to notice you completely, but after a bit it'll reset.
             //I don't know why but 100 just seems like the right number after a bit of testing.
-            if(this.timer2 != null && this.timer2 < game.time.now) this.timer2 += 100;
-            else this.timer2 = null;
+            if(this.timer2 != null && this.timer2 < game.time.now){
+                this.timer2 += 100;
+            } else {
+                this.timer2 = null;
+            }
         }
     }
     pointTo(x,y){
