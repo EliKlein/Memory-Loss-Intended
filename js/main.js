@@ -112,7 +112,7 @@ class Player{
             }
         }
         if (keys.direction()) {
-            stepSound.play('', 0.25, 0.75, false, false);//plays stepping sounds
+            stepSound.play('', 0.25, 0.5, false, false);//plays stepping sounds
             this.sprite.angle = Math.atan(this.sprite.body.velocity.y / this.sprite.body.velocity.x) * 180 / Math.PI;
             if (this.sprite.body.velocity.x < 0) this.sprite.angle += 180;
         } else {
@@ -217,8 +217,8 @@ class StoryList{
 }
 
 class Prisoner{
-    constructor(x, y) {
-        this.sprite = prisonersGroup.create(x, y, 'Prisoner');
+    constructor(x, y, frame) {
+        this.sprite = prisonersGroup.create(x, y, 'Prisoner', frame);
         this.sprite.anchor.setTo(0.5, 0.5);
         this.sprite.scale.setTo(0.45);
         this.sprite.body.immovable = true;
@@ -227,7 +227,7 @@ class Prisoner{
         this.free = true;//'am I already going to or at a computer? if not, I'm free'
 
         this.story = prisonerStoryList.getRandom();
-        this.name = names[Math.floor(Math.random()*names.length)]
+        this.name = frame;
 
         this.index = -1;
 
@@ -362,10 +362,11 @@ class Prisoner{
         var x = 64 + ((i%2)*64);
         var y = 448;
         if(i > 1) y += 64;
-        this.sprite = prisonersGroup.create(x, y, 'Prisoner');
+        this.sprite = prisonersGroup.create(x, y, 'Prisoner', this.name);
         this.sprite.anchor.setTo(0.5, 0.5);
         this.sprite.scale.setTo(0.45);
         this.sprite.body.immovable = true;
+        console.log(this);
     }
 }
 
@@ -420,7 +421,7 @@ class Guard{
         if(this.light.visible(player)){
             this.psSprite.reset(this.sprite.x, this.sprite.y-40);
             if(this.timer == null){
-                alertSound.play('', 0, 0.5, false,false);
+                alertSound.play('', 0, 0.2, false,false);
                 this.timer = game.time.now;
             } else if (game.time.now - this.timer > 1000){
                 deadSound.play('', 0, 0.5, false, false);
@@ -534,10 +535,10 @@ class CameraEnemy{
         if(this.light.visible(player) || seen){
             this.psSprite.reset(this.sprite.x, this.sprite.y);
             if(this.timer2 == null){
-                if(!debuggingSecondStage) alertSound.play('', 0, 0.5, false,false);
+                if(!debuggingSecondStage) alertSound.play('', 0, 0.2, false,false);
                 this.timer2 = game.time.now;
             } else if (game.time.now - this.timer2 > 1000 && !debuggingSecondStage){
-                deadSound.play('', 0, 0.5, false, false);
+                deadSound.play('', 0, 0.2, false, false);
                 gameOverTip = "Your group was seen by a camera! Make sure you don't lead your friends into view of the cameras either. You can see where they're pointing when you look at them."
                 game.state.start("GameOver");
             }
@@ -940,11 +941,11 @@ GameStateHandler.Preloader.prototype = {
         this.load.image('Menu_Background', 'Menu_Background.png');
         this.load.image('button', 'grey_button.png');
         this.load.bitmapFont('font_game', "font_game.png", "font_game.fnt")
-        this.load.audio('menu',['menumusic.mp3']);
+        this.load.audio('menu',['menuMusic2.ogg']);
 
         //music
         //BGM2 IS SECOND STAGE MUSIC ... they're both the same now, but we can change it and whatever...
-        this.load.audio('bgm',['bgm4.ogg']);
+        this.load.audio('bgm',['bgm1.ogg']);
         this.load.audio('bgm2',['bgm4.ogg']);
 
         //in-game sounds
@@ -1028,6 +1029,8 @@ GameStateHandler.Menu.prototype = {
         button_options.anchor.setTo(0.5, 0.5);
         textopt = game.add.bitmapText(button_options.x, button_options.y, "font_game", 'HELP', 20);
         textopt.anchor.setTo(0.5, 0.5);
+        if(!menuMusic.isPlaying) menuMusic.play('', 0, 0.15, true);
+
     },
     update: function() {
         if(button_play.input.pointerOver()) {
@@ -1105,12 +1108,12 @@ GameStateHandler.Stage1.prototype = {
         //creating prisoners
         prisonersGroup = game.add.group();
         prisonersGroup.enableBody = true;
-        new Prisoner(80, 115);
-        new Prisoner(430, 475);
-        new Prisoner(940, 95);
-        new Prisoner(1245, 155);
-        new Prisoner(1300, 480);
-        new Prisoner(1960, 280);
+        new Prisoner(80, 115, 'Prisoner1');
+        new Prisoner(430, 475, 'Prisoner2');
+        new Prisoner(940, 95, 'Prisoner3');
+        new Prisoner(1245, 155, 'Prisoner4');
+        new Prisoner(1300, 480, 'Prisoner5');
+        new Prisoner(1960, 280, 'Prisoner6');
 
         //creating guards
         if(guardsHidden) makeEnemies();
@@ -1135,6 +1138,7 @@ GameStateHandler.Stage1.prototype = {
         for(var i = 0; i < prisonerArray.length; i++){
             prisonerArray[i].makeText();
         }
+        console.log(prisonerArray);
     },
     update: function() {
         if(stageComplete()){
