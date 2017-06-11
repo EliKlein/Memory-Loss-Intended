@@ -554,7 +554,7 @@ class CameraEnemy{
         }
 
         var seen = false;
-        for(var i = 0; i < prisonerArray.length; i++){
+        for(var i = firstFreePrisoner; i < prisonerArray.length; i++){
             if(this.light.visible(prisonerArray[i])){
                 seen = true;
                 break;
@@ -618,7 +618,7 @@ class LightSource{
 
         for(var currentAngle = startAngle; currentAngle <= endAngle; currentAngle += this.arcWidth / this.resolution){
             var currentLine = new Phaser.Line(sX, sY, sX + Math.cos(currentAngle*Math.PI/180)*this.strength, sY + Math.sin(currentAngle*Math.PI/180)*this.strength);
-            var currentInt = getWallIntersection(currentLine);
+            var currentInt = getWallIntersection(currentLine, false);
             if(currentInt){
                 points.push({x:currentInt.x, y:currentInt.y});
             }else{
@@ -640,19 +640,17 @@ class LightSource{
         lightTexture.context.fill();
         lightTexture.dirty = true;
     }
+    
     visible(target){
-        //I think with reeeeeally big arc widths, this might screw up occasionally? don't think it matters since we're never going to use numbers >180 degrees
-        function correctAngle(angle){
-            if(angle > 0)return angle - 180;
-            return angle + 180;
-        }
         var sX = this.source.getX();
         var sY = this.source.getY();
         var tX = target.getX();
         var tY = target.getY();
 
+        //within range?
         if(distance(sX, sY, tX, tY) > this.strength) return false;
 
+        //set up angles to check...
         var angleDiff;
         if(sX == tX){
             if(sY == tY)return true;
@@ -662,6 +660,7 @@ class LightSource{
             angleDiff = Math.atan((sY-tY)/(sX-tX))*180/Math.PI;
         }
 
+        //within arc of sight?
         var portAng = this.source.getAngle() - (this.arcWidth/2);
         var starboardAng = portAng + this.arcWidth;
         if(sX > tX){
@@ -669,9 +668,9 @@ class LightSource{
             starboardAng = correctAngle(starboardAng);
         }
         if(angleDiff < portAng || angleDiff > starboardAng) return false;
-        var intersect = getWallIntersection(new Phaser.Line(sX, sY, tX, tY));
-        if(intersect)return false;
-        return true;
+
+        //anything in the way?
+        return !(getWallIntersection(new Phaser.Line(sX, sY, tX, tY), true));
     }
 }
 
@@ -757,11 +756,18 @@ function directionTo(source, x, y){
         return d;
 }
 
+//I think with reeeeeally big arc widths, this might screw up occasionally? don't think it matters since we're never going to use numbers >180 degrees
+//this is for the light source calculation of whether or not something is within the arc of vision
+function correctAngle(angle){
+    if(angle > 0)return angle - 180;
+    return angle + 180;
+}
+
 function distance(x1, y1, x2, y2){
     return Math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
 }
 
-function getWallIntersection(ray) {
+function getWallIntersection(ray, boolean) {
     var distanceToWall = Number.POSITIVE_INFINITY;
     var closestIntersection = null;
     //vertical lines
@@ -772,6 +778,7 @@ function getWallIntersection(ray) {
             var intersectY = slope * ((i*32) - ray.start.x) + ray.start.y;
             var yTile = Math.floor(intersectY / 32);
             if (intersectY >= 0 && yTile < map.height && (map.getTile(i, yTile) != null || map.getTile(Math.max(i-1, 0), yTile) != null)) {
+                if(boolean) return true;
                 dist = distance(ray.start.x, ray.start.y, i*32, intersectY);
                 if (dist < distanceToWall) {
                     distanceToWall = dist;
@@ -787,6 +794,7 @@ function getWallIntersection(ray) {
             var intersectX = slope * ((i*32) - ray.start.y) + ray.start.x;
             var xTile = Math.floor(intersectX / 32);
             if (intersectX >= 0 && xTile < map.width && (map.getTile(xTile, i) != null || map.getTile(xTile, Math.max(i-1, 0)) != null)) {
+                if(boolean) return true;
                 dist = distance(ray.start.x, ray.start.y,  intersectX, i*32);
                 if (dist < distanceToWall) {
                     distanceToWall = dist;
@@ -795,6 +803,7 @@ function getWallIntersection(ray) {
             }
         }
     }
+    if(boolean) return false;
     return closestIntersection;
     
 }
