@@ -59,7 +59,7 @@ class KeyBinds{
         return this.up()||this.down()||this.right()||this.left();
     }
     call(){
-        return this.enterKey.justPressed();//this.spacebarKey.justPressed() || this.enterKey.justPressed();
+        return this.spacebarKey.justPressed() || this.enterKey.justPressed();
     }
     clear(){
         return this.spacebarKey.justPressed();
