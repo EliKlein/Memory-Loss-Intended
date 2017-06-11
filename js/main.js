@@ -617,13 +617,8 @@ class LightSource{
         var endAngle = startAngle + this.arcWidth;
 
         for(var currentAngle = startAngle; currentAngle <= endAngle; currentAngle += this.arcWidth / this.resolution){
-            var currentLine = new Phaser.Line(sX, sY, sX + Math.cos(currentAngle*Math.PI/180)*this.strength, sY + Math.sin(currentAngle*Math.PI/180)*this.strength);
-            var currentInt = getWallIntersection(currentLine, false);
-            if(currentInt){
-                points.push({x:currentInt.x, y:currentInt.y});
-            }else{
-                points.push({x:currentLine.end.x, y:currentLine.end.y});
-            }
+            points.push(getWallIntersection(new Phaser.Line(sX, sY, sX + Math.cos(currentAngle*Math.PI/180)*this.strength, sY + Math.sin(currentAngle*Math.PI/180)*this.strength), false));
+            
         }
         var g = lightTexture.context.createRadialGradient(sX, sY, this.strength * 0.5, sX, sY, this.strength);
         g.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
@@ -638,7 +633,7 @@ class LightSource{
         lightTexture.context.lineTo(sX, sY);
         lightTexture.context.stroke();
         lightTexture.context.fill();
-        lightTexture.dirty = true;
+        //lightTexture.dirty = true;
     }
     
     visible(target){
@@ -696,6 +691,7 @@ function doLights(){
             arguments[i].light.draw();
         }
     }
+    lightTexture.dirty = true;
 }
 
 function makeMap(ref, bg) {
@@ -769,7 +765,7 @@ function distance(x1, y1, x2, y2){
 
 function getWallIntersection(ray, boolean) {
     var distanceToWall = Number.POSITIVE_INFINITY;
-    var closestIntersection = null;
+    var closestIntersection = {x:ray.end.x, y:ray.end.y};
     //vertical lines
     var loopEnds = {x:Math.ceil(Math.max(ray.start.x, ray.end.x) / 32), y:Math.ceil(Math.max(ray.start.y, ray.end.y) / 32)};
     if(ray.end.x - ray.start.x != 0){
