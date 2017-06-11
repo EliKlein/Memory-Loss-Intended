@@ -1264,20 +1264,22 @@ GameStateHandler.Stage2.prototype = {
             cameraArray[i].update();
         }
         var win = true;
+        var index = 0;
         for(var i = 0; i < prisonerArray.length; i++){
             if(prisonerArray[i].free){
                 win = false;
-                for(var j = 0; j < computerArray.length; j++){
-                    computerArray[j].check(prisonerArray[i]);
-                }
+            } else if(i == index){
+                index++;
             }
+        }
+        for(var i = 0; i < computerArray.length; i++){
+            computerArray[i].check(prisonerArray[index]);
         }
         if(win && this.wonAlready == undefined){
             console.log("YOU WIN!");
             this.wonAlready = true;
         }
         
-
         lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
                
         //show lights just for cameras in sight (if they're hidden, otherwise show all lights)
