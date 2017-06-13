@@ -308,16 +308,16 @@ class Prisoner{
         this.buttonD.kill();
     }
     accept(){
+        if(!this.story.truth){
+            gameOverTip = this.story.GOM;
+            game.state.start("GameOver");
+        }
         game.world.remove(this.background);
         game.world.remove(this.text);
         game.world.remove(this.hint);
         game.world.remove(this.buttonA);
         game.world.remove(this.buttonD);
         this.accepted = true;
-        if(!this.story.truth){
-            gameOverTip = this.story.GOM;
-            game.state.start("GameOver");
-        }
     }
     deny(){
         this.stopText();
@@ -442,7 +442,10 @@ class Guard{
         //check if the player is visible; if they are, start a timer...
         //if the timer goes off, game over, but the timer gets closer and closer to reset as the player spends time out of sight
         if(this.light.visible(player)){
-            this.psSprite.reset(this.sprite.x, this.sprite.y-40);
+            if(this.psSprite.alive){
+                this.psSprite.x=this.sprite.x;
+                this.psSprite.y=this.sprite.y-40;
+            } else this.psSprite.reset(this.sprite.x, this.sprite.y-40);
             if(this.timer == null){
                 alertSound.play('', 0, 0.2, false,false);
                 this.timer = game.time.now;
@@ -452,7 +455,7 @@ class Guard{
                 game.state.start("GameOver")
             }
         } else {
-            this.psSprite.kill();
+            if(this.psSprite.alive)this.psSprite.kill();
             //if you were just seen, it should take less time than normal to notice you completely, but after a bit it'll reset.
             //I don't know why but 100 just seems like the right number after a bit of testing.
             if(this.timer != null && this.timer < game.time.now){
@@ -561,7 +564,7 @@ class CameraEnemy{
             }
         }
         if(this.light.visible(player) || seen){
-            this.psSprite.reset(this.sprite.x, this.sprite.y);
+            if(!this.psSprite.alive) this.psSprite.reset(this.sprite.x, this.sprite.y);
             if(this.timer2 == null){
                 if(!debuggingSecondStage) alertSound.play('', 0, 0.2, false,false);
                 this.timer2 = game.time.now;
@@ -571,7 +574,7 @@ class CameraEnemy{
                 game.state.start("GameOver");
             }
         } else {
-            this.psSprite.kill();
+            if(this.psSprite.alive) this.psSprite.kill();
             //if you were just seen, it should take less time than normal to notice you completely, but after a bit it'll reset.
             //I don't know why but 100 just seems like the right number after a bit of testing.
             if(this.timer2 != null && this.timer2 < game.time.now){
@@ -1281,8 +1284,7 @@ GameStateHandler.Stage2.prototype = {
             firstFreePrisoner = computerArray[i].check(firstFreePrisoner);
         }
         if(firstFreePrisoner == prisonerArray.length){
-            console.log("You can now win by going to 'your' computer! ... crap we didn't do that");
-            firstFreePrisoner++; //just so it doesn't flood the log with this
+            game.physics.arcade.collide(prisonerArray[firstFreePrisoner - 1].sprite, computersGroup, function(){game.state.start("WinScreen");})
         }
         
         lightTexture.context.clearRect(game.camera.x, game.camera.y, game.width, game.height);
@@ -1300,7 +1302,6 @@ GameStateHandler.Stage2.prototype = {
             for(var i = 0; i < prisonerArray.length; i++){
                 prisonerArray[i].followPlayer();
             }
-            console.log(game.tweens);
         }
         player.update();
    }
@@ -1346,10 +1347,34 @@ GameStateHandler.GameOver.prototype = {
     },
     update: function() {}
 };
+GameStateHandler.WinScreen = function() {
+    var button_menu, text_menu, button_retry, text_retry;
+};
+GameStateHandler.WinScreen.prototype = {
+    preload: function(){
+        stopSounds();
+    },
+    create: function() {
+        var menu_background = this.add.image(0,0, 'Menu_Background');
+        menu_background.alpha = 0.35;
+        button_menu = game.add.button(game.width/2, game.height - 60, 'button', function() {
+            this.state.start('Menu');
+        }, this);
+        button_menu.anchor.setTo(0.5, 0.5);
+        text_menu = game.add.bitmapText(button_menu.x, button_menu.y, 'font_game', 'RETURN TO MENU', 20);
+        text_menu.anchor.setTo(0.5, 0.5);
+        
+        game.add.bitmapText(game.width/2, 40, 'font_game', "You Win!", 28).anchor.setTo(0.5, 0.5);
+        var winText = wordWrapBitmapText("Congratulations, everyone got out OK!\n\nYour captive buddies have started taking steps towards undoing the effects of the scams that caused them so much trouble.", 16, 500);
+        game.add.bitmapText(game.width/2, game.height/2, 'font_game', winText, 32).anchor.setTo(0.5, 0.5);
+    },
+    update: function() {}
+};
 game.state.add('Preloader', GameStateHandler.Preloader);
 game.state.add('Menu', GameStateHandler.Menu);
 game.state.add('Options_Screen', GameStateHandler.Options_Screen);
 game.state.add('Stage1', GameStateHandler.Stage1);
 game.state.add('Stage2', GameStateHandler.Stage2);
 game.state.add('GameOver', GameStateHandler.GameOver);
+game.state.add('WinScreen', GameStateHandler.WinScreen);
 game.state.start('Preloader');
